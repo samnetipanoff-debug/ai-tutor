@@ -1000,21 +1000,41 @@ function toggleMic() {
 
 
       if (
-        !response.ok ||
-        !data.ok
-      ) {
+  !response.ok ||
+  !data.ok
+) {
 
-        thinking.textContent =
-          data.error ||
-          "Speech recognition failed.";
+  thinking.textContent =
+    data.error ||
+    "Speech recognition failed.";
 
-        return;
-      }
+  return;
+}
 
 
-      thinking.textContent =
-        data.text ||
-        "No speech detected.";
+const recognizedText =
+  data.text ||
+  "";
+
+
+if (!recognizedText) {
+
+  thinking.textContent =
+    "No speech detected.";
+
+  return;
+}
+
+
+// Show recognized speech
+thinking.textContent =
+  recognizedText;
+
+
+// Send recognized speech to AI
+await sendVoiceToAI(
+  recognizedText
+);
 
 
     } catch (error) {
