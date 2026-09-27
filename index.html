@@ -105,6 +105,7 @@
       margin-bottom: 12px;
       line-height: 1.45;
       font-size: 15px;
+      white-space: pre-wrap;
     }
 
     .bot {
@@ -168,6 +169,11 @@
     .mic.active {
       background: #111827;
       color: white;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: default;
     }
   </style>
 </head>
@@ -329,12 +335,14 @@ function getUI(lang) {
   return UI[lang] || UI.en;
 }
 
+
 if (tg) {
 
   tg.ready();
   tg.expand();
 
-  telegramUser = tg.initDataUnsafe?.user || null;
+  telegramUser =
+    tg.initDataUnsafe?.user || null;
 
   connectTelegramUser();
 
@@ -345,9 +353,11 @@ if (tg) {
 
 }
 
+
 async function connectTelegramUser() {
 
-  const status = document.getElementById("userStatus");
+  const status =
+    document.getElementById("userStatus");
 
   if (!tg || !tg.initData) {
 
@@ -374,9 +384,13 @@ async function connectTelegramUser() {
       }
     );
 
-    const data = await response.json();
+    const data =
+      await response.json();
 
-    console.log("rapid-worker response:", data);
+    console.log(
+      "rapid-worker response:",
+      data
+    );
 
     if (!response.ok || !data.ok) {
 
@@ -386,10 +400,15 @@ async function connectTelegramUser() {
       return;
     }
 
-    telegramUser = data.user;
-    userProfile = data.profile;
+    telegramUser =
+      data.user;
 
-    setupInterface(userProfile);
+    userProfile =
+      data.profile;
+
+    setupInterface(
+      userProfile
+    );
 
   } catch (error) {
 
@@ -400,14 +419,17 @@ async function connectTelegramUser() {
   }
 }
 
+
 function setupInterface(profile) {
 
   const lang =
     profile?.interface_language || "en";
 
-  const ui = getUI(lang);
+  const ui =
+    getUI(lang);
 
-  document.documentElement.lang = lang;
+  document.documentElement.lang =
+    lang;
 
   document.getElementById("title").textContent =
     ui.title;
@@ -435,11 +457,16 @@ function setupInterface(profile) {
     ": " +
     (telegramUser?.first_name || "User");
 
-  showProfile(profile, lang);
+  showProfile(
+    profile,
+    lang
+  );
 
-  showWelcome(ui);
-
+  showWelcome(
+    ui
+  );
 }
+
 
 function showProfile(profile, lang) {
 
@@ -463,6 +490,7 @@ function showProfile(profile, lang) {
     "block";
 }
 
+
 function showWelcome(ui) {
 
   const chat =
@@ -473,106 +501,54 @@ function showWelcome(ui) {
   const first =
     document.createElement("div");
 
-  first.className = "message bot";
-  first.textContent = ui.welcome;
+  first.className =
+    "message bot";
+
+  first.textContent =
+    ui.welcome;
 
   chat.appendChild(first);
 
   const second =
     document.createElement("div");
 
-  second.className = "message bot";
-  second.textContent = ui.welcome2;
+  second.className =
+    "message bot";
+
+  second.textContent =
+    ui.welcome2;
 
   chat.appendChild(second);
 }
 
+
 async function sendMessage() {
 
-  console.log("SEND MESSAGE START");
+  console.log(
+    "SEND MESSAGE START"
+  );
 
-  const input = document.getElementById("messageInput");
-  const text = input.value.trim();
+  const input =
+    document.getElementById("messageInput");
+
+  const text =
+    input.value.trim();
 
   if (!text) {
     return;
   }
 
-  console.log("MESSAGE:", text);
-
-  const chat = document.getElementById("chat");
-
-  const userMessage = document.createElement("div");
-  userMessage.className = "message user";
-  userMessage.textContent = text;
-
-  chat.appendChild(userMessage);
-
-  input.value = "";
-
-  chat.scrollTop = chat.scrollHeight;
-
-  const thinking = document.createElement("div");
-  thinking.className = "message bot";
-  thinking.textContent = "...";
-
-  chat.appendChild(thinking);
-
-  chat.scrollTop = chat.scrollHeight;
-
-  console.log("BEFORE FETCH");
-
-  try {
-
-    const response = await fetch(
-      "https://qnvuadgqpptazfnuadfe.supabase.co/functions/v1/rapid-worker",
-      {
-        method: "POST",
-
-        headers: {
-          "Content-Type": "application/json"
-        },
-
-        body: JSON.stringify({
-          initData: tg.initData,
-          message: text
-        })
-      }
-    );
-
-    console.log("FETCH RESPONSE:", response.status);
-
-    const data = await response.json();
-
-    console.log("AI RESPONSE:", data);
-
-    if (!response.ok || !data.ok) {
-
-      thinking.textContent =
-        data.error || "AI response failed.";
-
-      return;
-    }
-
-    thinking.textContent =
-      data.answer || "...";
-
-    chat.scrollTop = chat.scrollHeight;
-
-  } catch (error) {
-
-    console.error("FETCH ERROR:", error);
-
-    thinking.textContent =
-      "Connection error.";
-  }
-}
-  }
+  console.log(
+    "MESSAGE:",
+    text
+  );
 
   const chat =
     document.getElementById("chat");
 
-  // Show user's message
+  const sendButton =
+    document.getElementById("sendButton");
+
   const userMessage =
     document.createElement("div");
 
@@ -582,14 +558,15 @@ async function sendMessage() {
   userMessage.textContent =
     text;
 
-  chat.appendChild(userMessage);
+  chat.appendChild(
+    userMessage
+  );
 
   input.value = "";
 
   chat.scrollTop =
     chat.scrollHeight;
 
-  // Temporary "thinking" message
   const thinking =
     document.createElement("div");
 
@@ -599,89 +576,96 @@ async function sendMessage() {
   thinking.textContent =
     "...";
 
-  chat.appendChild(thinking);
+  chat.appendChild(
+    thinking
+  );
 
   chat.scrollTop =
     chat.scrollHeight;
 
+  sendButton.disabled =
+    true;
+
+  console.log(
+    "BEFORE FETCH"
+  );
+
   try {
 
-    const response = await fetch(
-      "https://qnvuadgqpptazfnuadfe.supabase.co/functions/v1/rapid-worker",
-      {
-        method: "POST",
+    const response =
+      await fetch(
+        "https://qnvuadgqpptazfnuadfe.supabase.co/functions/v1/rapid-worker",
+        {
+          method: "POST",
 
-        headers: {
-          "Content-Type": "application/json"
-        },
+          headers: {
+            "Content-Type": "application/json"
+          },
 
-        body: JSON.stringify({
-          initData: tg.initData,
-          message: text
-        })
-      }
+          body: JSON.stringify({
+            initData: tg.initData,
+            message: text
+          })
+        }
+      );
+
+    console.log(
+      "FETCH RESPONSE:",
+      response.status
     );
 
     const data =
       await response.json();
 
     console.log(
-      "AI response:",
+      "AI RESPONSE:",
       data
     );
 
     if (!response.ok || !data.ok) {
 
       thinking.textContent =
+        data.error ||
         "AI response failed.";
 
       return;
     }
 
     thinking.textContent =
-      data.answer || "...";
+      data.answer ||
+      "...";
 
     chat.scrollTop =
       chat.scrollHeight;
 
   } catch (error) {
 
-    console.error(error);
+    console.error(
+      "FETCH ERROR:",
+      error
+    );
 
     thinking.textContent =
       "Connection error.";
+    
+  } finally {
+
+    sendButton.disabled =
+      false;
   }
 }
-  }
 
-  const chat =
-    document.getElementById("chat");
-
-  const message =
-    document.createElement("div");
-
-  message.className =
-    "message user";
-
-  message.textContent =
-    text;
-
-  chat.appendChild(message);
-
-  input.value = "";
-
-  chat.scrollTop =
-    chat.scrollHeight;
-}
 
 function toggleMic() {
 
   const button =
     document.getElementById("micButton");
 
-  button.classList.toggle("active");
-
+  button.classList.toggle(
+    "active"
+  );
 }
+
 
 document
   .getElementById("messageInput")
@@ -690,6 +674,9 @@ document
     function(event) {
 
       if (event.key === "Enter") {
+
+        event.preventDefault();
+
         sendMessage();
       }
 
