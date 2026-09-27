@@ -489,14 +489,84 @@ function showWelcome(ui) {
 
 async function sendMessage() {
 
-  const input =
-    document.getElementById("messageInput");
+  console.log("SEND MESSAGE START");
 
-  const text =
-    input.value.trim();
+  const input = document.getElementById("messageInput");
+  const text = input.value.trim();
 
   if (!text) {
     return;
+  }
+
+  console.log("MESSAGE:", text);
+
+  const chat = document.getElementById("chat");
+
+  const userMessage = document.createElement("div");
+  userMessage.className = "message user";
+  userMessage.textContent = text;
+
+  chat.appendChild(userMessage);
+
+  input.value = "";
+
+  chat.scrollTop = chat.scrollHeight;
+
+  const thinking = document.createElement("div");
+  thinking.className = "message bot";
+  thinking.textContent = "...";
+
+  chat.appendChild(thinking);
+
+  chat.scrollTop = chat.scrollHeight;
+
+  console.log("BEFORE FETCH");
+
+  try {
+
+    const response = await fetch(
+      "https://qnvuadgqpptazfnuadfe.supabase.co/functions/v1/rapid-worker",
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json"
+        },
+
+        body: JSON.stringify({
+          initData: tg.initData,
+          message: text
+        })
+      }
+    );
+
+    console.log("FETCH RESPONSE:", response.status);
+
+    const data = await response.json();
+
+    console.log("AI RESPONSE:", data);
+
+    if (!response.ok || !data.ok) {
+
+      thinking.textContent =
+        data.error || "AI response failed.";
+
+      return;
+    }
+
+    thinking.textContent =
+      data.answer || "...";
+
+    chat.scrollTop = chat.scrollHeight;
+
+  } catch (error) {
+
+    console.error("FETCH ERROR:", error);
+
+    thinking.textContent =
+      "Connection error.";
+  }
+}
   }
 
   const chat =
