@@ -80,6 +80,14 @@
       cursor: pointer;
     }
 
+    .status {
+      padding: 8px 16px;
+      font-size: 12px;
+      color: #777;
+      text-align: center;
+      border-bottom: 1px solid #eeeeeb;
+    }
+
     .chat {
       flex: 1;
       overflow-y: auto;
@@ -110,7 +118,7 @@
       color: white;
       border-bottom-right-radius: 6px;
     }
- 
+
     .message-label {
       font-size: 11px;
       opacity: 0.55;
@@ -202,6 +210,10 @@
 
   </header>
 
+  <div class="status" id="userStatus">
+    Connecting...
+  </div>
+
   <main class="chat" id="chat">
 
     <div class="message tutor">
@@ -254,74 +266,88 @@
 </div>
 
 <script>
-  
+
   const tg = window.Telegram?.WebApp;
 
-let telegramUser = null;
-
-if (tg) {
-  tg.ready();
-  tg.expand();
-
-  telegramUser = tg.initDataUnsafe?.user || null;
-
-  console.log("Telegram user:", telegramUser);
-
-  if (telegramUser) {
-    console.log(
-      "Telegram ID:",
-      telegramUser.id,
-      "Name:",
-      telegramUser.first_name,
-      "Username:",
-      telegramUser.username
-    );
+  if (tg) {
+    tg.ready();
+    tg.expand();
   }
 
   async function connectTelegramUser() {
-  if (!tg || !tg.initData) {
-    console.log("Telegram initData is not available");
-    return;
-  }
 
-  try {
-    const response = await fetch(
-      "https://qnvuadgqpptazfnuadfe.supabase.co/functions/v1/rapid-worker",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          initData: tg.initData,
-        }),
-      }
-    );
+    const status = document.getElementById("userStatus");
 
-    const data = await response.json();
-
-    console.log("Backend response:", data);
-
-    if (data.ok) {
-      console.log("Telegram user verified:", data.user);
-    } else {
-      console.error("Telegram verification failed:", data.error);
+    if (!tg || !tg.initData) {
+      status.textContent = "Telegram connection unavailable";
+      return;
     }
-  } catch (error) {
-    console.error("Connection error:", error);
-  }
-}
 
-connectTelegramUser();
-  
-}
+    try {
+
+      const response = await fetch(
+        "https://qnvuadgqpptazfnuadfe.supabase.co/functions/v1/rapid-worker",
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json",
+          },
+
+          body: JSON.stringify({
+            initData: tg.initData,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      console.log("Backend response:", data);
+
+      if (data.ok) {
+
+        const user = data.user;
+
+        status.textContent =
+          "Connected: " +
+          (user.first_name || "") +
+          " · ID " +
+          user.id;
+
+      } else {
+
+        status.textContent =
+          "Telegram verification failed";
+
+        console.error(
+          "Telegram verification failed:",
+          data.error
+        );
+      }
+
+    } catch (error) {
+
+      status.textContent = "Connection error";
+
+      console.error(
+        "Connection error:",
+        error
+      );
+    }
+  }
+
+  connectTelegramUser();
+
   function closeApp() {
+
     if (tg) {
       tg.close();
     }
+
   }
 
   function addMessage(text, type) {
+
     const chat = document.getElementById("chat");
 
     const message = document.createElement("div");
@@ -341,6 +367,7 @@ connectTelegramUser();
   }
 
   function sendMessage() {
+
     const input = document.getElementById("input");
 
     const text = input.value.trim();
@@ -352,20 +379,25 @@ connectTelegramUser();
     input.value = "";
 
     setTimeout(() => {
+
       addMessage(
         "I heard you. The AI tutor will answer here.",
         "tutor"
       );
+
     }, 500);
   }
 
   function toggleMic() {
+
     const mic = document.getElementById("mic");
 
     mic.classList.toggle("active");
+
   }
 
   function escapeHtml(text) {
+
     const div = document.createElement("div");
 
     div.textContent = text;
@@ -376,10 +408,13 @@ connectTelegramUser();
   document
     .getElementById("input")
     .addEventListener("keydown", function(event) {
+
       if (event.key === "Enter") {
         sendMessage();
       }
+
     });
+
 </script>
 
 </body>
