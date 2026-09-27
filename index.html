@@ -794,66 +794,152 @@ function toggleMic() {
 
 
         recorder.onstop =
-          function() {
+  async function() {
 
-            stream
-              .getTracks()
-              .forEach(
-                function(track) {
-                  track.stop();
-                }
-              );
+    stream
+      .getTracks()
+      .forEach(
+        function(track) {
+          track.stop();
+        }
+      );
 
-            button.classList.remove(
-              "active"
-            );
+    button.classList.remove(
+      "active"
+    );
 
-            button.textContent =
-              "🎙";
+    button.textContent =
+      "🎙";
 
-            const audioBlob =
-              new Blob(
-                audioChunks,
-                {
-                  type:
-                    recorder.mimeType ||
-                    "audio/webm"
-                }
-              );
 
-            console.log(
-              "VOICE RECORDING READY:",
-              audioBlob
-            );
+    const audioBlob =
+      new Blob(
+        audioChunks,
+        {
+          type:
+            recorder.mimeType ||
+            "audio/webm"
+        }
+      );
 
-            console.log(
-              "VOICE SIZE:",
-              audioBlob.size
-            );
 
-            const chat =
-              document.getElementById(
-                "chat"
-              );
+    console.log(
+      "VOICE RECORDING READY:",
+      audioBlob
+    );
 
-            const message =
-              document.createElement(
-                "div"
-              );
+    console.log(
+      "VOICE SIZE:",
+      audioBlob.size
+    );
 
-            message.className =
-              "message bot";
 
-            message.textContent =
-              "🎙 Voice recording received.";
+    const chat =
+      document.getElementById(
+        "chat"
+      );
 
-            chat.appendChild(
-              message
-            );
 
-            chat.scrollTop =
-              chat.scrollHeight;
-          };
+    const thinking =
+      document.createElement(
+        "div"
+      );
+
+    thinking.className =
+      "message bot";
+
+    thinking.textContent =
+      "...";
+
+    chat.appendChild(
+      thinking
+    );
+
+    chat.scrollTop =
+      chat.scrollHeight;
+
+
+    try {
+
+      const formData =
+        new FormData();
+
+
+      formData.append(
+        "initData",
+        tg.initData
+      );
+
+
+      formData.append(
+        "audio",
+        audioBlob,
+        "voice.webm"
+      );
+
+
+      console.log(
+        "SENDING AUDIO TO BACKEND"
+      );
+
+
+      const response =
+        await fetch(
+          "https://qnvuadgqpptazfnuadfe.supabase.co/functions/v1/rapid-worker",
+          {
+            method: "POST",
+
+            body: formData
+          }
+        );
+
+
+      console.log(
+        "AUDIO RESPONSE:",
+        response.status
+      );
+
+
+      const data =
+        await response.json();
+
+
+      console.log(
+        "TRANSCRIPTION RESPONSE:",
+        data
+      );
+
+
+      if (
+        !response.ok ||
+        !data.ok
+      ) {
+
+        thinking.textContent =
+          data.error ||
+          "Speech recognition failed.";
+
+        return;
+      }
+
+
+      thinking.textContent =
+        data.text ||
+        "No speech detected.";
+
+
+    } catch (error) {
+
+      console.error(
+        "VOICE FETCH ERROR:",
+        error
+      );
+
+      thinking.textContent =
+        "Connection error.";
+    }
+
+  };
 
 
         recorder.start();
