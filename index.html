@@ -275,6 +275,32 @@ let currentAudio =
 
 
 // =====================================================
+// AUTO SCROLL
+// =====================================================
+
+function scrollChatToBottom() {
+
+  const chat =
+    document.getElementById(
+      "chat"
+    );
+
+  if (!chat) {
+    return;
+  }
+
+  requestAnimationFrame(
+    function() {
+
+      chat.scrollTop =
+        chat.scrollHeight;
+
+    }
+  );
+}
+
+
+// =====================================================
 // UI TRANSLATIONS
 // =====================================================
 
@@ -663,6 +689,9 @@ function showWelcome(ui) {
   chat.appendChild(
     second
   );
+
+
+  scrollChatToBottom();
 }
 
 
@@ -751,8 +780,7 @@ async function loadChatHistory() {
     );
 
 
-    chat.scrollTop =
-      chat.scrollHeight;
+    scrollChatToBottom();
 
 
   } catch (error) {
@@ -814,9 +842,8 @@ function addAudioPlayer(
     "ended",
     function() {
 
-      URL.revokeObjectURL(
-        audioUrl
-      );
+      // Keep the audio URL alive
+      // so the player can be replayed.
 
     }
   );
@@ -825,6 +852,9 @@ function addAudioPlayer(
   container.appendChild(
     audio
   );
+
+
+  scrollChatToBottom();
 
 
   return audio;
@@ -991,6 +1021,9 @@ async function playSpeech(
     }
 
 
+    scrollChatToBottom();
+
+
   } catch (error) {
 
     console.error(
@@ -1068,8 +1101,7 @@ async function sendMessage() {
     "";
 
 
-  chat.scrollTop =
-    chat.scrollHeight;
+  scrollChatToBottom();
 
 
   const thinking =
@@ -1091,8 +1123,7 @@ async function sendMessage() {
   );
 
 
-  chat.scrollTop =
-    chat.scrollHeight;
+  scrollChatToBottom();
 
 
   sendButton.disabled =
@@ -1153,6 +1184,8 @@ async function sendMessage() {
         data.error ||
         "AI response failed.";
 
+      scrollChatToBottom();
+
       return;
     }
 
@@ -1162,8 +1195,7 @@ async function sendMessage() {
       "...";
 
 
-    chat.scrollTop =
-      chat.scrollHeight;
+    scrollChatToBottom();
 
 
   } catch (error) {
@@ -1176,6 +1208,9 @@ async function sendMessage() {
 
     thinking.textContent =
       "Connection error.";
+
+
+    scrollChatToBottom();
 
   } finally {
 
@@ -1218,8 +1253,7 @@ async function sendVoiceToAI(
   );
 
 
-  chat.scrollTop =
-    chat.scrollHeight;
+  scrollChatToBottom();
 
 
   try {
@@ -1265,6 +1299,8 @@ async function sendVoiceToAI(
         data.error ||
         "AI response failed.";
 
+      scrollChatToBottom();
+
       return;
     }
 
@@ -1274,8 +1310,7 @@ async function sendVoiceToAI(
       "...";
 
 
-    chat.scrollTop =
-      chat.scrollHeight;
+    scrollChatToBottom();
 
 
     // ===============================================
@@ -1298,6 +1333,9 @@ async function sendVoiceToAI(
 
     thinking.textContent =
       "Connection error.";
+
+
+    scrollChatToBottom();
   }
 }
 
@@ -1452,8 +1490,7 @@ function toggleMic() {
             );
 
 
-            chat.scrollTop =
-              chat.scrollHeight;
+            scrollChatToBottom();
 
 
             try {
@@ -1517,6 +1554,8 @@ function toggleMic() {
                   data.error ||
                   "Speech recognition failed.";
 
+                scrollChatToBottom();
+
                 return;
               }
 
@@ -1532,6 +1571,8 @@ function toggleMic() {
 
                 thinking.textContent =
                   "No speech detected.";
+
+                scrollChatToBottom();
 
                 return;
               }
@@ -1568,8 +1609,7 @@ function toggleMic() {
               );
 
 
-              chat.scrollTop =
-                chat.scrollHeight;
+              scrollChatToBottom();
 
 
               // =========================================
@@ -1591,6 +1631,9 @@ function toggleMic() {
 
               thinking.textContent =
                 "Connection error.";
+
+
+              scrollChatToBottom();
             }
           };
 
