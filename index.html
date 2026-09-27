@@ -1,13 +1,12 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
 
-<meta
- name="viewport"
- content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
-/>
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+  />
 
   <title>AI Tutor</title>
 
@@ -183,7 +182,6 @@
       cursor: default;
     }
   </style>
-
 </head>
 
 <body>
@@ -198,24 +196,22 @@
 
   <div class="profile" id="profile">
 
-```
-<div class="profile-name" id="profileName"></div>
+    <div class="profile-name" id="profileName"></div>
 
-<div class="profile-row">
-  <span class="profile-label" id="learningLabel"></span>
-  <span class="profile-value" id="learningLanguage">—</span>
-</div>
+    <div class="profile-row">
+      <span class="profile-label" id="learningLabel"></span>
+      <span class="profile-value" id="learningLanguage">—</span>
+    </div>
 
-<div class="profile-row">
-  <span class="profile-label" id="levelLabel"></span>
-  <span class="profile-value" id="level">—</span>
-</div>
+    <div class="profile-row">
+      <span class="profile-label" id="levelLabel"></span>
+      <span class="profile-value" id="level">—</span>
+    </div>
 
-<div class="profile-row">
-  <span class="profile-label" id="goalLabel"></span>
-  <span class="profile-value" id="goal">—</span>
-</div>
-```
+    <div class="profile-row">
+      <span class="profile-label" id="goalLabel"></span>
+      <span class="profile-value" id="goal">—</span>
+    </div>
 
   </div>
 
@@ -227,28 +223,26 @@
 
   <div class="input-inner">
 
-```
-<input
-  id="messageInput"
-  type="text"
-/>
+    <input
+      id="messageInput"
+      type="text"
+    />
 
-<button
-  class="mic"
-  id="micButton"
-  onclick="toggleMic()"
->
-  🎙
-</button>
+    <button
+      class="mic"
+      id="micButton"
+      onclick="toggleMic()"
+    >
+      🎙
+    </button>
 
-<button
-  class="send"
-  onclick="sendMessage()"
-  id="sendButton"
->
-  Send
-</button>
-```
+    <button
+      class="send"
+      onclick="sendMessage()"
+      id="sendButton"
+    >
+      Send
+    </button>
 
   </div>
 
@@ -838,17 +832,6 @@ function addAudioPlayer(
     audioUrl;
 
 
-  audio.addEventListener(
-    "ended",
-    function() {
-
-      // Keep the audio URL alive
-      // so the player can be replayed.
-
-    }
-  );
-
-
   container.appendChild(
     audio
   );
@@ -969,20 +952,12 @@ async function playSpeech(
       );
 
 
-    // =================================================
-    // ADD REPLAY PLAYER TO MESSAGE
-    // =================================================
-
     const audio =
       addAudioPlayer(
         messageContainer,
         audioBlob
       );
 
-
-    // =================================================
-    // STOP PREVIOUS AUDIO
-    // =================================================
 
     if (currentAudio) {
 
@@ -994,10 +969,6 @@ async function playSpeech(
         null;
     }
 
-
-    // =================================================
-    // AUTO PLAY
-    // =================================================
 
     currentAudio =
       audio;
@@ -1313,10 +1284,6 @@ async function sendVoiceToAI(
     scrollChatToBottom();
 
 
-    // ===============================================
-    // PLAY AI VOICE + SHOW PLAYER
-    // ===============================================
-
     await playSpeech(
       data.answer,
       thinking
@@ -1467,10 +1434,6 @@ function toggleMic() {
               );
 
 
-            // =========================================
-            // TEMPORARY THINKING MESSAGE
-            // =========================================
-
             const thinking =
               document.createElement(
                 "div"
@@ -1578,17 +1541,8 @@ function toggleMic() {
               }
 
 
-              // =========================================
-              // REMOVE THINKING MESSAGE
-              // =========================================
-
               thinking.remove();
 
-
-              // =========================================
-              // SHOW RECOGNIZED USER SPEECH
-              // RIGHT SIDE
-              // =========================================
 
               const userVoiceMessage =
                 document.createElement(
@@ -1611,10 +1565,6 @@ function toggleMic() {
 
               scrollChatToBottom();
 
-
-              // =========================================
-              // SEND RECOGNIZED SPEECH TO AI
-              // =========================================
 
               await sendVoiceToAI(
                 recognizedText
