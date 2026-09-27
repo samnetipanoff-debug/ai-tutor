@@ -1,12 +1,13 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
 
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
-  />
+<meta
+ name="viewport"
+ content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+/>
 
   <title>AI Tutor</title>
 
@@ -120,6 +121,12 @@
       margin-left: auto;
     }
 
+    .voice-player {
+      width: 100%;
+      margin-top: 10px;
+      display: block;
+    }
+
     .input-area {
       position: fixed;
       left: 0;
@@ -176,6 +183,7 @@
       cursor: default;
     }
   </style>
+
 </head>
 
 <body>
@@ -190,22 +198,24 @@
 
   <div class="profile" id="profile">
 
-    <div class="profile-name" id="profileName"></div>
+```
+<div class="profile-name" id="profileName"></div>
 
-    <div class="profile-row">
-      <span class="profile-label" id="learningLabel"></span>
-      <span class="profile-value" id="learningLanguage">—</span>
-    </div>
+<div class="profile-row">
+  <span class="profile-label" id="learningLabel"></span>
+  <span class="profile-value" id="learningLanguage">—</span>
+</div>
 
-    <div class="profile-row">
-      <span class="profile-label" id="levelLabel"></span>
-      <span class="profile-value" id="level">—</span>
-    </div>
+<div class="profile-row">
+  <span class="profile-label" id="levelLabel"></span>
+  <span class="profile-value" id="level">—</span>
+</div>
 
-    <div class="profile-row">
-      <span class="profile-label" id="goalLabel"></span>
-      <span class="profile-value" id="goal">—</span>
-    </div>
+<div class="profile-row">
+  <span class="profile-label" id="goalLabel"></span>
+  <span class="profile-value" id="goal">—</span>
+</div>
+```
 
   </div>
 
@@ -217,26 +227,28 @@
 
   <div class="input-inner">
 
-    <input
-      id="messageInput"
-      type="text"
-    />
+```
+<input
+  id="messageInput"
+  type="text"
+/>
 
-    <button
-      class="mic"
-      id="micButton"
-      onclick="toggleMic()"
-    >
-      🎙
-    </button>
+<button
+  class="mic"
+  id="micButton"
+  onclick="toggleMic()"
+>
+  🎙
+</button>
 
-    <button
-      class="send"
-      onclick="sendMessage()"
-      id="sendButton"
-    >
-      Send
-    </button>
+<button
+  class="send"
+  onclick="sendMessage()"
+  id="sendButton"
+>
+  Send
+</button>
+```
 
   </div>
 
@@ -754,10 +766,79 @@ async function loadChatHistory() {
 
 
 // =====================================================
-// PLAY AI SPEECH
+// CREATE AI AUDIO PLAYER
 // =====================================================
 
-async function playSpeech(text) {
+function addAudioPlayer(
+  container,
+  audioBlob
+) {
+
+  if (
+    !container ||
+    !audioBlob
+  ) {
+    return;
+  }
+
+
+  const audioUrl =
+    URL.createObjectURL(
+      audioBlob
+    );
+
+
+  const audio =
+    document.createElement(
+      "audio"
+    );
+
+
+  audio.className =
+    "voice-player";
+
+
+  audio.controls =
+    true;
+
+
+  audio.preload =
+    "metadata";
+
+
+  audio.src =
+    audioUrl;
+
+
+  audio.addEventListener(
+    "ended",
+    function() {
+
+      URL.revokeObjectURL(
+        audioUrl
+      );
+
+    }
+  );
+
+
+  container.appendChild(
+    audio
+  );
+
+
+  return audio;
+}
+
+
+// =====================================================
+// PLAY AI SPEECH + ADD REPLAY PLAYER
+// =====================================================
+
+async function playSpeech(
+  text,
+  messageContainer
+) {
 
   if (!text) {
     return;
@@ -858,11 +939,20 @@ async function playSpeech(text) {
       );
 
 
-    const audioUrl =
-      URL.createObjectURL(
+    // =================================================
+    // ADD REPLAY PLAYER TO MESSAGE
+    // =================================================
+
+    const audio =
+      addAudioPlayer(
+        messageContainer,
         audioBlob
       );
 
+
+    // =================================================
+    // STOP PREVIOUS AUDIO
+    // =================================================
 
     if (currentAudio) {
 
@@ -870,48 +960,35 @@ async function playSpeech(text) {
         currentAudio.pause();
       } catch {}
 
-      URL.revokeObjectURL(
-        currentAudio.src
-      );
+      currentAudio =
+        null;
     }
 
 
+    // =================================================
+    // AUTO PLAY
+    // =================================================
+
     currentAudio =
-      new Audio(
-        audioUrl
-      );
+      audio;
 
 
-    currentAudio.onended =
-      function() {
+    if (currentAudio) {
 
-        URL.revokeObjectURL(
-          audioUrl
+      try {
+
+        await currentAudio.play();
+
+      } catch (playError) {
+
+        console.warn(
+          "AUTOPLAY BLOCKED:",
+          playError
         );
 
-        currentAudio =
-          null;
-      };
+      }
 
-
-    currentAudio.onerror =
-      function(error) {
-
-        console.error(
-          "AUDIO PLAYBACK ERROR:",
-          error
-        );
-
-        URL.revokeObjectURL(
-          audioUrl
-        );
-
-        currentAudio =
-          null;
-      };
-
-
-    await currentAudio.play();
+    }
 
 
   } catch (error) {
@@ -1202,11 +1279,12 @@ async function sendVoiceToAI(
 
 
     // ===============================================
-    // PLAY AI VOICE
+    // PLAY AI VOICE + SHOW PLAYER
     // ===============================================
 
     await playSpeech(
-      data.answer
+      data.answer,
+      thinking
     );
 
 
@@ -1351,6 +1429,10 @@ function toggleMic() {
               );
 
 
+            // =========================================
+            // TEMPORARY THINKING MESSAGE
+            // =========================================
+
             const thinking =
               document.createElement(
                 "div"
@@ -1455,12 +1537,45 @@ function toggleMic() {
               }
 
 
-              // Show recognized speech
-              thinking.textContent =
+              // =========================================
+              // REMOVE THINKING MESSAGE
+              // =========================================
+
+              thinking.remove();
+
+
+              // =========================================
+              // SHOW RECOGNIZED USER SPEECH
+              // RIGHT SIDE
+              // =========================================
+
+              const userVoiceMessage =
+                document.createElement(
+                  "div"
+                );
+
+
+              userVoiceMessage.className =
+                "message user";
+
+
+              userVoiceMessage.textContent =
                 recognizedText;
 
 
-              // Send recognized speech to AI
+              chat.appendChild(
+                userVoiceMessage
+              );
+
+
+              chat.scrollTop =
+                chat.scrollHeight;
+
+
+              // =========================================
+              // SEND RECOGNIZED SPEECH TO AI
+              // =========================================
+
               await sendVoiceToAI(
                 recognizedText
               );
