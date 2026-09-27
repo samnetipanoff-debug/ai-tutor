@@ -736,9 +736,160 @@ function toggleMic() {
   const button =
     document.getElementById("micButton");
 
-  button.classList.toggle(
-    "active"
-  );
+  if (
+    !window.MediaRecorder ||
+    !navigator.mediaDevices ||
+    !navigator.mediaDevices.getUserMedia
+  ) {
+
+    alert(
+      "Voice recording is not supported."
+    );
+
+    return;
+  }
+
+  if (
+    window.currentRecorder &&
+    window.currentRecorder.state === "recording"
+  ) {
+
+    window.currentRecorder.stop();
+
+    return;
+  }
+
+  navigator.mediaDevices
+    .getUserMedia({
+      audio: true
+    })
+    .then(
+      function(stream) {
+
+        const recorder =
+          new MediaRecorder(stream);
+
+        const audioChunks = [];
+
+        window.currentRecorder =
+          recorder;
+
+        window.currentAudioChunks =
+          audioChunks;
+
+        recorder.ondataavailable =
+          function(event) {
+
+            if (
+              event.data.size > 0
+            ) {
+
+              audioChunks.push(
+                event.data
+              );
+
+            }
+
+          };
+
+
+        recorder.onstop =
+          function() {
+
+            stream
+              .getTracks()
+              .forEach(
+                function(track) {
+                  track.stop();
+                }
+              );
+
+            button.classList.remove(
+              "active"
+            );
+
+            button.textContent =
+              "🎙";
+
+            const audioBlob =
+              new Blob(
+                audioChunks,
+                {
+                  type:
+                    recorder.mimeType ||
+                    "audio/webm"
+                }
+              );
+
+            console.log(
+              "VOICE RECORDING READY:",
+              audioBlob
+            );
+
+            console.log(
+              "VOICE SIZE:",
+              audioBlob.size
+            );
+
+            const chat =
+              document.getElementById(
+                "chat"
+              );
+
+            const message =
+              document.createElement(
+                "div"
+              );
+
+            message.className =
+              "message bot";
+
+            message.textContent =
+              "🎙 Voice recording received.";
+
+            chat.appendChild(
+              message
+            );
+
+            chat.scrollTop =
+              chat.scrollHeight;
+          };
+
+
+        recorder.start();
+
+        button.classList.add(
+          "active"
+        );
+
+        button.textContent =
+          "⏹";
+
+        console.log(
+          "VOICE RECORDING STARTED"
+        );
+      }
+    )
+    .catch(
+      function(error) {
+
+        console.error(
+          "MICROPHONE ERROR:",
+          error
+        );
+
+        button.classList.remove(
+          "active"
+        );
+
+        button.textContent =
+          "🎙";
+
+        alert(
+          "Microphone access is required."
+        );
+      }
+    );
 }
 
 
