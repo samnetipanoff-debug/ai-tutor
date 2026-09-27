@@ -730,6 +730,95 @@ async function sendMessage() {
   }
 }
 
+async function sendVoiceToAI(text) {
+
+  const chat =
+    document.getElementById("chat");
+
+  const thinking =
+    document.createElement("div");
+
+  thinking.className =
+    "message bot";
+
+  thinking.textContent =
+    "...";
+
+  chat.appendChild(
+    thinking
+  );
+
+  chat.scrollTop =
+    chat.scrollHeight;
+
+
+  try {
+
+    const response =
+      await fetch(
+        "https://qnvuadgqpptazfnuadfe.supabase.co/functions/v1/rapid-worker",
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
+
+          body: JSON.stringify({
+            initData:
+              tg.initData,
+
+            message:
+              text
+          })
+        }
+      );
+
+
+    const data =
+      await response.json();
+
+
+    console.log(
+      "VOICE AI RESPONSE:",
+      data
+    );
+
+
+    if (
+      !response.ok ||
+      !data.ok
+    ) {
+
+      thinking.textContent =
+        data.error ||
+        "AI response failed.";
+
+      return;
+    }
+
+
+    thinking.textContent =
+      data.answer ||
+      "...";
+
+
+    chat.scrollTop =
+      chat.scrollHeight;
+
+
+  } catch (error) {
+
+    console.error(
+      "VOICE AI ERROR:",
+      error
+    );
+
+    thinking.textContent =
+      "Connection error.";
+  }
+}  
 
 function toggleMic() {
 
