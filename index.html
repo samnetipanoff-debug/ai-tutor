@@ -254,16 +254,30 @@
 </div>
 
 <script>
+  
   const tg = window.Telegram?.WebApp;
+
+let telegramUser = null;
 
 if (tg) {
   tg.ready();
   tg.expand();
 
-  console.log("Telegram WebApp:", tg.initData);
-  console.log("Telegram user:", tg.initDataUnsafe?.user);
-}
+  telegramUser = tg.initDataUnsafe?.user || null;
 
+  console.log("Telegram user:", telegramUser);
+
+  if (telegramUser) {
+    console.log(
+      "Telegram ID:",
+      telegramUser.id,
+      "Name:",
+      telegramUser.first_name,
+      "Username:",
+      telegramUser.username
+    );
+  }
+}
   function closeApp() {
     if (tg) {
       tg.close();
