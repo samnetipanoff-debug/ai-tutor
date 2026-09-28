@@ -1,0 +1,4 @@
+project_id = "qnvuadgqpptazfnuadfe"
+
+[functions.rapid-worker]
+verify_jwt = false
