@@ -568,9 +568,9 @@ Deno.serve(
       );
       
       await updateProgress(
-        String(telegramId),
-        profile?.level || null,
-      );
+  String(telegramUser.id),
+  profile?.level || null,
+);
       
 
       // =================================================
