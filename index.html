@@ -1320,11 +1320,16 @@ async function sendVoiceToAI(
           },
 
           body: JSON.stringify({
+
             initData:
               tg.initData,
 
             message:
-              text
+              text,
+
+            voice:
+              true
+
           })
         }
       );
