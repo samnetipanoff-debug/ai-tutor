@@ -566,7 +566,12 @@ Deno.serve(
         "assistant",
         finalAnswer,
       );
-
+      
+      await updateProgress(
+        String(telegramId),
+        profile?.level || null,
+      );
+      
 
       // =================================================
       // RESPONSE
