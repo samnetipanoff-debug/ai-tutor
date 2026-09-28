@@ -19,6 +19,10 @@ import {
   getChatHistory,
 } from "./db/messages.ts";
 
+import { 
+  updateProgress 
+} from "./db/progress.ts";
+
 import {
   askOpenRouter,
 } from "./ai/tutor.ts";
