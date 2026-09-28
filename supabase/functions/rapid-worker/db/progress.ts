@@ -22,6 +22,11 @@ export async function updateProgress(
   telegramId: string,
   level: string | null,
 ) {
+  console.log(
+  "PROGRESS UPDATE START:",
+  telegramId,
+  level,
+);
   try {
     /*
      * Count unique vocabulary items.
