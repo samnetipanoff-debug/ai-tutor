@@ -19,8 +19,8 @@ import {
   getChatHistory,
 } from "./db/messages.ts";
 
-import { 
-  updateProgress 
+import {
+  updateProgress,
 } from "./db/progress.ts";
 
 import {
@@ -200,6 +200,28 @@ Deno.serve(
 
 
         // -----------------------------------------------
+        // PROFILE
+        // -----------------------------------------------
+
+        const profile =
+          await getUserProfile(
+            telegramUser.id,
+          );
+
+
+        if (!profile?.learning_language) {
+          return jsonResponse(
+            {
+              ok: false,
+              error:
+                "Learning language is not configured",
+            },
+            400,
+          );
+        }
+
+
+        // -----------------------------------------------
         // AUDIO CHECK
         // -----------------------------------------------
 
@@ -226,6 +248,12 @@ Deno.serve(
         );
 
 
+        console.log(
+          "LEARNING LANGUAGE:",
+          profile.learning_language,
+        );
+
+
         // -----------------------------------------------
         // WHISPER
         // -----------------------------------------------
@@ -233,6 +261,7 @@ Deno.serve(
         const transcription =
           await transcribeAudio(
             audio,
+            profile.learning_language,
           );
 
 
@@ -268,7 +297,6 @@ Deno.serve(
 
       const body =
         await req.json();
-
 
       const initData =
         body?.initData;
@@ -400,16 +428,12 @@ Deno.serve(
 
           return jsonResponse({
             ok: true,
-
             user:
               telegramUser,
-
             profile:
               profile,
-
             conversation_id:
               conversation.id,
-
             history:
               history,
           });
@@ -418,10 +442,8 @@ Deno.serve(
 
         return jsonResponse({
           ok: true,
-
           user:
             telegramUser,
-
           profile:
             profile,
         });
@@ -566,12 +588,17 @@ Deno.serve(
         "assistant",
         finalAnswer,
       );
-      
+
+
+      // =================================================
+      // UPDATE PROGRESS
+      // =================================================
+
       await updateProgress(
-  String(telegramUser.id),
-  profile?.level || null,
-);
-      
+        String(telegramUser.id),
+        profile?.level || null,
+      );
+
 
       // =================================================
       // RESPONSE
@@ -579,16 +606,12 @@ Deno.serve(
 
       return jsonResponse({
         ok: true,
-
         user:
           telegramUser,
-
         profile:
           profile,
-
         conversation_id:
           conversationId,
-
         answer:
           finalAnswer,
       });
@@ -613,4 +636,3 @@ Deno.serve(
     }
   },
 );
-
