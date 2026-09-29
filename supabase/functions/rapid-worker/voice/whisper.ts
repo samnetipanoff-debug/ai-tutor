@@ -2,11 +2,18 @@ import { OPENROUTER_API_KEY } from "../config.ts";
 
 export async function transcribeAudio(
   audioFile: File,
+  learningLanguage: string,
 ) {
   const formData = new FormData();
 
   formData.append("file", audioFile);
   formData.append("model", "openai/whisper-1");
+
+  // Язык всегда берём из профиля пользователя.
+  // Например: en, sr, de, fr, es, ru.
+  if (learningLanguage) {
+    formData.append("language", learningLanguage);
+  }
 
   try {
     const response = await fetch(
@@ -26,7 +33,6 @@ export async function transcribeAudio(
         response.status,
         await response.text(),
       );
-
       return null;
     }
 
@@ -38,7 +44,6 @@ export async function transcribeAudio(
       "Transcription failed:",
       error,
     );
-
     return null;
   }
 }
