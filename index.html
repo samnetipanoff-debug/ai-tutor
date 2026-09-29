@@ -5,7 +5,7 @@
 
   <meta
     name="viewport"
-    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"
   />
 
   <title>AI Tutor</title>
@@ -17,172 +17,559 @@
       box-sizing: border-box;
     }
 
+    html,
     body {
       margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
       background: #f5f7fa;
-      color: #1f2937;
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        Helvetica,
+        Arial,
+        sans-serif;
+    }
+
+    body {
+      min-height: 100dvh;
+    }
+
+    button,
+    input {
+      font: inherit;
     }
 
     .app {
+      width: 100%;
       max-width: 700px;
+      height: 100dvh;
       margin: 0 auto;
-      min-height: 100vh;
       display: flex;
       flex-direction: column;
+      overflow: hidden;
+      background: #f5f7fa;
     }
 
+    /* =========================
+       HEADER
+       ========================= */
+
     .header {
-      padding: 22px 20px 14px;
-      background: white;
-      border-bottom: 1px solid #e5e7eb;
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding:
+        calc(12px + env(safe-area-inset-top))
+        16px
+        12px;
+
+      background: rgba(255, 255, 255, 0.94);
+      border-bottom: 1px solid #e7e9ed;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      z-index: 10;
+    }
+
+    .avatar {
+      position: relative;
+      width: 50px;
+      height: 50px;
+      flex: 0 0 50px;
+      border-radius: 50%;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      background:
+        radial-gradient(
+          circle at 35% 30%,
+          #ffffff 0%,
+          #f4eaff 20%,
+          #c8a8ff 48%,
+          #8c6cff 75%,
+          #6b52dc 100%
+        );
+
+      box-shadow:
+        0 4px 16px rgba(110, 80, 220, 0.22),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.7);
+
+      transition:
+        transform 0.25s ease,
+        box-shadow 0.25s ease;
+    }
+
+    .avatar-face {
+      font-size: 27px;
+      line-height: 1;
+      transform: translateY(1px);
+      user-select: none;
+    }
+
+    .avatar-ring {
+      position: absolute;
+      inset: -4px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    .avatar.listening {
+      animation: avatarPulse 1.8s ease-in-out infinite;
+    }
+
+    .avatar.listening .avatar-ring {
+      opacity: 1;
+      border-color: rgba(76, 175, 80, 0.5);
+      animation: ringPulse 1.5s ease-in-out infinite;
+    }
+
+    .avatar.recording {
+      transform: scale(1.06);
+    }
+
+    .avatar.recording .avatar-ring {
+      opacity: 1;
+      border-color: rgba(76, 175, 80, 0.85);
+      animation: ringRecording 0.8s ease-in-out infinite;
+    }
+
+    .avatar.thinking .avatar-ring {
+      opacity: 1;
+      border-color: rgba(120, 100, 230, 0.7);
+      animation: ringThinking 1.2s linear infinite;
+    }
+
+    .avatar.speaking {
+      transform: scale(1.04);
+    }
+
+    .avatar.speaking .avatar-ring {
+      opacity: 1;
+      border-color: rgba(120, 100, 230, 0.85);
+      animation: ringSpeaking 0.65s ease-in-out infinite;
+    }
+
+    @keyframes avatarPulse {
+      0%,
+      100% {
+        transform: scale(1);
+      }
+
+      50% {
+        transform: scale(1.035);
+      }
+    }
+
+    @keyframes ringPulse {
+      0%,
+      100% {
+        transform: scale(1);
+        opacity: 0.45;
+      }
+
+      50% {
+        transform: scale(1.12);
+        opacity: 0.9;
+      }
+    }
+
+    @keyframes ringRecording {
+      0%,
+      100% {
+        transform: scale(1);
+      }
+
+      50% {
+        transform: scale(1.15);
+      }
+    }
+
+    @keyframes ringThinking {
+      from {
+        transform: rotate(0deg) scale(1);
+      }
+
+      to {
+        transform: rotate(360deg) scale(1);
+      }
+    }
+
+    @keyframes ringSpeaking {
+      0%,
+      100% {
+        transform: scale(1);
+      }
+
+      50% {
+        transform: scale(1.12);
+      }
+    }
+
+    .header-text {
+      min-width: 0;
+      flex: 1;
     }
 
     .title {
-      font-size: 24px;
+      margin: 0;
+      font-size: 18px;
       font-weight: 700;
+      color: #17191d;
+      line-height: 1.2;
     }
 
     .subtitle {
-      margin-top: 4px;
-      color: #6b7280;
-      font-size: 14px;
+      margin-top: 3px;
+      font-size: 13px;
+      color: #777d86;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .status {
-      margin-top: 8px;
-      color: #9ca3af;
+      margin-top: 4px;
       font-size: 12px;
+      color: #6f7580;
+      transition: color 0.2s ease;
     }
 
-    .profile {
-      margin: 16px;
-      padding: 16px;
-      background: white;
-      border-radius: 16px;
-      border: 1px solid #e5e7eb;
-      display: none;
+    .status.listening {
+      color: #36a34a;
+    }
+
+    .status.recording {
+      color: #23953d;
+      font-weight: 600;
+    }
+
+    .status.thinking,
+    .status.speaking {
+      color: #6955d9;
+    }
+
+    .status.error {
+      color: #d84848;
+    }
+
+    /* =========================
+       PROFILE
+       ========================= */
+
+    .profile-card {
+      flex: 0 0 auto;
+      margin: 12px 14px 8px;
+      padding: 11px 13px;
+
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+
+      background: #ffffff;
+      border: 1px solid #e8eaf0;
+      border-radius: 14px;
+
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.035);
+    }
+
+    .profile-left {
+      min-width: 0;
     }
 
     .profile-name {
-      font-size: 18px;
-      font-weight: 700;
-      margin-bottom: 12px;
-    }
-
-    .profile-row {
-      display: flex;
-      justify-content: space-between;
-      gap: 16px;
-      padding: 7px 0;
       font-size: 14px;
-      border-bottom: 1px solid #f0f1f3;
+      font-weight: 650;
+      color: #22252a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    .profile-row:last-child {
-      border-bottom: none;
+    .profile-details {
+      margin-top: 3px;
+      font-size: 12px;
+      color: #858a93;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    .profile-label {
-      color: #6b7280;
-    }
-
-    .profile-value {
-      font-weight: 500;
-      text-align: right;
-    }
+    /* =========================
+       CHAT
+       ========================= */
 
     .chat {
-      flex: 1;
-      padding: 20px 16px 110px;
+      flex: 1 1 auto;
+      min-height: 0;
+
       overflow-y: auto;
+      overflow-x: hidden;
+
+      padding: 10px 14px 18px;
+
       -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      scroll-behavior: smooth;
     }
 
     .message {
+      display: flex;
+      margin-bottom: 10px;
+    }
+
+    .message.user {
+      justify-content: flex-end;
+    }
+
+    .message.bot {
+      justify-content: flex-start;
+    }
+
+    .bubble {
       max-width: 82%;
-      padding: 12px 14px;
-      border-radius: 16px;
-      margin-bottom: 12px;
-      line-height: 1.45;
+      padding: 10px 13px;
+
+      border-radius: 17px;
+
       font-size: 15px;
-      white-space: pre-wrap;
-      overflow-wrap: break-word;
+      line-height: 1.45;
+
+      word-break: break-word;
+      overflow-wrap: anywhere;
     }
 
-    .bot {
-      background: white;
-      border: 1px solid #e5e7eb;
-      margin-right: auto;
+    .message.user .bubble {
+      color: #ffffff;
+      background: #6956d9;
+      border-bottom-right-radius: 5px;
     }
 
-    .user {
-      background: #111827;
-      color: white;
-      margin-left: auto;
+    .message.bot .bubble {
+      color: #202329;
+      background: #ffffff;
+      border: 1px solid #e7e9ed;
+      border-bottom-left-radius: 5px;
     }
 
-    .voice-player {
+    .message-meta {
+      margin-top: 5px;
+      font-size: 10px;
+      color: #9a9ea5;
+    }
+
+    .audio-player {
       width: 100%;
-      margin-top: 10px;
-      display: block;
+      margin-top: 8px;
     }
+
+    /* =========================
+       THINKING
+       ========================= */
+
+    .thinking {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 2px;
+    }
+
+    .thinking span {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #8b8f97;
+      animation: thinkingDots 1.1s infinite ease-in-out;
+    }
+
+    .thinking span:nth-child(2) {
+      animation-delay: 0.15s;
+    }
+
+    .thinking span:nth-child(3) {
+      animation-delay: 0.3s;
+    }
+
+    @keyframes thinkingDots {
+      0%,
+      60%,
+      100% {
+        transform: translateY(0);
+        opacity: 0.45;
+      }
+
+      30% {
+        transform: translateY(-4px);
+        opacity: 1;
+      }
+    }
+
+    /* =========================
+       INPUT
+       ========================= */
 
     .input-area {
-      position: fixed;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      padding: 12px 16px;
-      background: rgba(255, 255, 255, 0.97);
-      border-top: 1px solid #e5e7eb;
-      z-index: 100;
-    }
+      flex: 0 0 auto;
 
-    .input-inner {
-      max-width: 700px;
-      margin: 0 auto;
       display: flex;
+      align-items: center;
       gap: 8px;
+
+      padding:
+        9px
+        12px
+        calc(9px + env(safe-area-inset-bottom));
+
+      background: rgba(255, 255, 255, 0.96);
+      border-top: 1px solid #e7e9ed;
+
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
     }
 
-    input {
+    .message-input {
       flex: 1;
       min-width: 0;
-      padding: 13px 14px;
+
+      height: 44px;
+      padding: 0 13px;
+
+      border: 1px solid #dfe2e7;
       border-radius: 14px;
-      border: 1px solid #d1d5db;
-      font-size: 15px;
+
+      background: #f8f9fb;
+      color: #202329;
+
+      font-size: 16px;
       outline: none;
+
+      -webkit-appearance: none;
+      appearance: none;
+
+      transition:
+        border-color 0.2s ease,
+        background 0.2s ease;
     }
 
-    button {
-      border: none;
+    .message-input:focus {
+      border-color: #9d91e8;
+      background: #ffffff;
+    }
+
+    .send-button {
+      width: 44px;
+      height: 44px;
+      flex: 0 0 44px;
+
+      border: 0;
       border-radius: 14px;
-      padding: 0 16px;
-      font-size: 15px;
+
+      background: #6956d9;
+      color: #ffffff;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
       cursor: pointer;
+
+      transition:
+        transform 0.15s ease,
+        opacity 0.15s ease;
     }
 
-    .send {
-      background: #111827;
-      color: white;
+    .send-button:active {
+      transform: scale(0.94);
     }
 
-    .mic {
-      width: 48px;
-      padding: 0;
-      background: #e5e7eb;
-    }
-
-    .mic.active {
-      background: #111827;
-      color: white;
-    }
-
-    button:disabled {
-      opacity: 0.6;
+    .send-button:disabled {
+      opacity: 0.45;
       cursor: default;
+    }
+
+    .send-icon {
+      font-size: 19px;
+      transform: translateX(1px);
+    }
+
+    /* =========================
+       MICROPHONE INFO
+       ========================= */
+
+    .voice-hint {
+      position: fixed;
+      left: 50%;
+      bottom: calc(65px + env(safe-area-inset-bottom));
+      transform: translateX(-50%);
+
+      max-width: calc(100% - 28px);
+
+      padding: 8px 12px;
+
+      background: rgba(32, 34, 40, 0.9);
+      color: #ffffff;
+
+      border-radius: 12px;
+
+      font-size: 12px;
+      text-align: center;
+
+      opacity: 0;
+      pointer-events: none;
+
+      transition:
+        opacity 0.2s ease,
+        transform 0.2s ease;
+
+      z-index: 30;
+    }
+
+    .voice-hint.visible {
+      opacity: 1;
+      transform: translateX(-50%) translateY(-4px);
+    }
+
+    /* =========================
+       SCROLLBAR
+       ========================= */
+
+    .chat::-webkit-scrollbar {
+      width: 5px;
+    }
+
+    .chat::-webkit-scrollbar-thumb {
+      background: rgba(120, 120, 130, 0.2);
+      border-radius: 10px;
+    }
+
+    /* =========================
+       MOBILE
+       ========================= */
+
+    @media (max-width: 480px) {
+      .profile-card {
+        margin-left: 10px;
+        margin-right: 10px;
+      }
+
+      .chat {
+        padding-left: 10px;
+        padding-right: 10px;
+      }
+
+      .bubble {
+        max-width: 88%;
+      }
     }
   </style>
 </head>
@@ -191,1568 +578,2289 @@
 
 <div class="app">
 
-  <div class="header">
-    <div class="title" id="title">AI Tutor</div>
-    <div class="subtitle" id="subtitle">Online Conversation</div>
-    <div class="status" id="userStatus">Connecting...</div>
-  </div>
+  <header class="header">
 
-  <div class="profile" id="profile">
-
-    <div class="profile-name" id="profileName"></div>
-
-    <div class="profile-row">
-      <span class="profile-label" id="learningLabel"></span>
-      <span class="profile-value" id="learningLanguage">—</span>
+    <div class="avatar" id="avatar">
+      <div class="avatar-ring"></div>
+      <div class="avatar-face">👩🏻‍🏫</div>
     </div>
 
-    <div class="profile-row">
-      <span class="profile-label" id="levelLabel"></span>
-      <span class="profile-value" id="level">—</span>
+    <div class="header-text">
+      <h1 class="title" id="title">AI Tutor</h1>
+      <div class="subtitle" id="subtitle">Your personal language tutor</div>
+      <div class="status" id="userStatus">Connecting...</div>
     </div>
 
-    <div class="profile-row">
-      <span class="profile-label" id="goalLabel"></span>
-      <span class="profile-value" id="goal">—</span>
+  </header>
+
+  <div class="profile-card">
+
+    <div class="profile-left">
+      <div class="profile-name" id="profileName">—</div>
+      <div class="profile-details" id="profileDetails">—</div>
     </div>
 
   </div>
 
-  <div class="chat" id="chat"></div>
+  <main class="chat" id="chat"></main>
 
-</div>
-
-<div class="input-area">
-
-  <div class="input-inner">
+  <div class="input-area">
 
     <input
       id="messageInput"
+      class="message-input"
       type="text"
+      autocomplete="off"
+      autocorrect="on"
+      autocapitalize="sentences"
+      placeholder="Type a message..."
     />
 
     <button
-      class="mic"
-      id="micButton"
-      onclick="toggleMic()"
-    >
-      🎙
-    </button>
-
-    <button
-      class="send"
-      onclick="sendMessage()"
       id="sendButton"
+      class="send-button"
+      type="button"
+      aria-label="Send"
+      onclick="sendMessage()"
     >
-      Send
+      <span class="send-icon">➤</span>
     </button>
 
   </div>
 
 </div>
 
+<div id="voiceHint" class="voice-hint"></div>
+
 <script>
+  /* =========================================================
+     CONFIG
+     ========================================================= */
 
-const RAPID_URL =
-  "https://qnvuadgqpptazfnuadfe.supabase.co/functions/v1/rapid-worker";
+  const RAPID_URL =
+    "https://qnvuadgqpptazfnuadfe.supabase.co/functions/v1/rapid-worker";
 
-
-const tg =
-  window.Telegram?.WebApp;
-
-
-let telegramUser =
-  null;
-
-let userProfile =
-  null;
-
-let currentAudio =
-  null;
+  const tg =
+    window.Telegram?.WebApp || null;
 
 
-// =====================================================
-// CHAT ELEMENT
-// =====================================================
+  /* =========================================================
+     GLOBAL STATE
+     ========================================================= */
 
-const chat =
-  document.getElementById("chat");
+  let telegramUser = null;
+  let userProfile = null;
+
+  let currentAudio = null;
+  let currentAudioUrl = null;
+
+  let isSending = false;
+
+  let voiceInitialized = false;
+  let voiceInitializing = false;
+
+  let mediaStream = null;
+  let audioContext = null;
+  let analyser = null;
+  let analyserData = null;
+  let animationFrame = null;
+
+  let mediaRecorder = null;
+  let recordingChunks = [];
+
+  let speechDetectedAt = 0;
+  let lastVoiceAt = 0;
+
+  let isUserSpeaking = false;
+  let isThinking = false;
+  let isSpeaking = false;
+
+  let voiceStartTimer = null;
+  let silenceTimer = null;
+
+  let noiseFloor = 0.012;
+  let calibrationStartedAt = 0;
+
+  let pendingAudioRetry = false;
+
+  const VOICE_CONFIG = {
+    noiseCalibrationMs: 700,
+
+    speechThresholdMin: 0.018,
+    speechThresholdMultiplier: 2.2,
+
+    speechStartHoldMs: 90,
+    speechStopSilenceMs: 750,
+
+    minSpeechDurationMs: 280,
+
+    analyserFftSize: 2048,
+
+    interruptHoldMs: 180,
+    interruptCooldownMs: 450,
+
+    maxRecordingMs: 20000
+  };
+
+  let lastInterruptAt = 0;
 
 
-// =====================================================
-// AUTO SCROLL
-// =====================================================
+  /* =========================================================
+     UI TRANSLATIONS
+     ========================================================= */
 
-function scrollChatToBottom() {
+  const UI = {
 
-  if (!chat) {
-    return;
-  }
+    ru: {
+      title: "AI Tutor",
+      subtitle: "Ваш персональный преподаватель",
+      connecting: "Подключение...",
+      ready: "Готов",
+      listening: "Слушаю...",
+      recording: "Слушаю вас...",
+      thinking: "Думаю...",
+      speaking: "Говорю...",
+      interrupted: "Слушаю вас...",
+      microphone: "Разрешите доступ к микрофону",
+      microphoneDenied: "Нет доступа к микрофону",
+      microphoneUnavailable: "Микрофон недоступен",
+      connectionError: "Ошибка подключения.",
+      requestError: "Не удалось отправить сообщение.",
+      voiceError: "Не удалось обработать голос.",
+      audioError: "Не удалось воспроизвести ответ.",
+      typeMessage: "Введите сообщение...",
+      enableVoice: "Нажмите один раз, чтобы разрешить голосовой режим.",
+      profileUnknown: "Профиль не загружен"
+    },
 
-  const scroll = () => {
+    en: {
+      title: "AI Tutor",
+      subtitle: "Your personal language tutor",
+      connecting: "Connecting...",
+      ready: "Ready",
+      listening: "Listening...",
+      recording: "Listening to you...",
+      thinking: "Thinking...",
+      speaking: "Speaking...",
+      interrupted: "Listening to you...",
+      microphone: "Please allow microphone access",
+      microphoneDenied: "Microphone access denied",
+      microphoneUnavailable: "Microphone unavailable",
+      connectionError: "Connection error.",
+      requestError: "Could not send the message.",
+      voiceError: "Could not process the voice message.",
+      audioError: "Could not play the response.",
+      typeMessage: "Type a message...",
+      enableVoice: "Tap once to enable voice mode.",
+      profileUnknown: "Profile unavailable"
+    },
 
-    chat.scrollTop =
-      chat.scrollHeight;
+    sr: {
+      title: "AI Tutor",
+      subtitle: "Vaš lični profesor jezika",
+      connecting: "Povezivanje...",
+      ready: "Spremno",
+      listening: "Slušam...",
+      recording: "Slušam vas...",
+      thinking: "Razmišljam...",
+      speaking: "Govorim...",
+      interrupted: "Slušam vas...",
+      microphone: "Dozvolite pristup mikrofonu",
+      microphoneDenied: "Pristup mikrofonu je odbijen",
+      microphoneUnavailable: "Mikrofon nije dostupan",
+      connectionError: "Greška pri povezivanju.",
+      requestError: "Poruka nije poslata.",
+      voiceError: "Nije moguće obraditi glas.",
+      audioError: "Nije moguće reprodukovati odgovor.",
+      typeMessage: "Unesite poruku...",
+      enableVoice: "Dodirnite jednom da omogućite glasovni režim.",
+      profileUnknown: "Profil nije dostupan"
+    },
 
-    chat.scrollTo({
-      top: chat.scrollHeight,
-      behavior: "auto"
-    });
+    es: {
+      title: "AI Tutor",
+      subtitle: "Tu profesor personal de idiomas",
+      connecting: "Conectando...",
+      ready: "Listo",
+      listening: "Escuchando...",
+      recording: "Te escucho...",
+      thinking: "Pensando...",
+      speaking: "Hablando...",
+      interrupted: "Te escucho...",
+      microphone: "Permite el acceso al micrófono",
+      microphoneDenied: "Acceso al micrófono denegado",
+      microphoneUnavailable: "Micrófono no disponible",
+      connectionError: "Error de conexión.",
+      requestError: "No se pudo enviar el mensaje.",
+      voiceError: "No se pudo procesar la voz.",
+      audioError: "No se pudo reproducir la respuesta.",
+      typeMessage: "Escribe un mensaje...",
+      enableVoice: "Toca una vez para activar el modo de voz.",
+      profileUnknown: "Perfil no disponible"
+    },
+
+    de: {
+      title: "AI Tutor",
+      subtitle: "Dein persönlicher Sprachlehrer",
+      connecting: "Verbinden...",
+      ready: "Bereit",
+      listening: "Ich höre zu...",
+      recording: "Ich höre dir zu...",
+      thinking: "Ich denke nach...",
+      speaking: "Ich spreche...",
+      interrupted: "Ich höre dir zu...",
+      microphone: "Bitte erlaube den Mikrofonzugriff",
+      microphoneDenied: "Mikrofonzugriff verweigert",
+      microphoneUnavailable: "Mikrofon nicht verfügbar",
+      connectionError: "Verbindungsfehler.",
+      requestError: "Nachricht konnte nicht gesendet werden.",
+      voiceError: "Sprache konnte nicht verarbeitet werden.",
+      audioError: "Antwort konnte nicht abgespielt werden.",
+      typeMessage: "Nachricht eingeben...",
+      enableVoice: "Einmal tippen, um den Sprachmodus zu aktivieren.",
+      profileUnknown: "Profil nicht verfügbar"
+    },
+
+    fr: {
+      title: "AI Tutor",
+      subtitle: "Votre professeur de langue personnel",
+      connecting: "Connexion...",
+      ready: "Prêt",
+      listening: "J'écoute...",
+      recording: "Je vous écoute...",
+      thinking: "Je réfléchis...",
+      speaking: "Je parle...",
+      interrupted: "Je vous écoute...",
+      microphone: "Autorisez l'accès au microphone",
+      microphoneDenied: "Accès au microphone refusé",
+      microphoneUnavailable: "Microphone indisponible",
+      connectionError: "Erreur de connexion.",
+      requestError: "Impossible d'envoyer le message.",
+      voiceError: "Impossible de traiter la voix.",
+      audioError: "Impossible de lire la réponse.",
+      typeMessage: "Écrivez un message...",
+      enableVoice: "Touchez une fois pour activer le mode vocal.",
+      profileUnknown: "Profil indisponible"
+    }
 
   };
 
 
-  // Immediately
-  scroll();
+  /* =========================================================
+     DOM
+     ========================================================= */
 
+  const chat =
+    document.getElementById("chat");
 
-  // After browser layout
-  requestAnimationFrame(() => {
+  const messageInput =
+    document.getElementById("messageInput");
 
-    scroll();
+  const sendButton =
+    document.getElementById("sendButton");
 
-    requestAnimationFrame(() => {
+  const titleElement =
+    document.getElementById("title");
 
-      scroll();
+  const subtitleElement =
+    document.getElementById("subtitle");
 
-    });
+  const userStatus =
+    document.getElementById("userStatus");
 
-  });
+  const avatar =
+    document.getElementById("avatar");
 
+  const profileName =
+    document.getElementById("profileName");
 
-  // After dynamic content
-  setTimeout(() => {
+  const profileDetails =
+    document.getElementById("profileDetails");
 
-    scroll();
+  const voiceHint =
+    document.getElementById("voiceHint");
 
-  }, 50);
 
+  /* =========================================================
+     TELEGRAM INIT
+     ========================================================= */
 
-  setTimeout(() => {
-
-    scroll();
-
-  }, 150);
-
-
-  setTimeout(() => {
-
-    scroll();
-
-  }, 300);
-
-}
-
-
-// =====================================================
-// OBSERVE CHAT CHANGES
-// =====================================================
-
-const chatObserver =
-  new MutationObserver(() => {
-
-    scrollChatToBottom();
-
-  });
-
-
-chatObserver.observe(
-  chat,
-  {
-    childList: true,
-    subtree: true,
-    characterData: true
-  }
-);
-
-
-// =====================================================
-// UI TRANSLATIONS
-// =====================================================
-
-const UI = {
-
-  ru: {
-    title: "AI Репетитор",
-    subtitle: "Онлайн-разговор",
-    learning: "Изучаемый язык",
-    level: "Уровень",
-    goal: "Цель",
-    input: "Напишите сообщение...",
-    send: "Отправить",
-    welcome: "Привет! Я твой AI-репетитор.",
-    welcome2: "Здесь мы можем свободно общаться и практиковать язык.",
-    connected: "Подключено"
-  },
-
-  en: {
-    title: "AI Tutor",
-    subtitle: "Online Conversation",
-    learning: "Learning language",
-    level: "Level",
-    goal: "Goal",
-    input: "Type a message...",
-    send: "Send",
-    welcome: "Hi! I'm your AI language tutor.",
-    welcome2: "We can have a free conversation and practice your language.",
-    connected: "Connected"
-  },
-
-  sr: {
-    title: "AI Tutor",
-    subtitle: "Online razgovor",
-    learning: "Jezik koji učiš",
-    level: "Nivo",
-    goal: "Cilj",
-    input: "Napiši poruku...",
-    send: "Pošalji",
-    welcome: "Zdravo! Ja sam tvoj AI tutor jezika.",
-    welcome2: "Možemo slobodno da razgovaramo i vežbamo jezik.",
-    connected: "Povezano"
-  },
-
-  es: {
-    title: "Tutor de IA",
-    subtitle: "Conversación online",
-    learning: "Idioma que aprendes",
-    level: "Nivel",
-    goal: "Objetivo",
-    input: "Escribe un mensaje...",
-    send: "Enviar",
-    welcome: "¡Hola! Soy tu tutor de idiomas con IA.",
-    welcome2: "Podemos conversar libremente y practicar el idioma.",
-    connected: "Conectado"
-  },
-
-  de: {
-    title: "KI-Tutor",
-    subtitle: "Online-Gespräch",
-    learning: "Lernsprache",
-    level: "Niveau",
-    goal: "Ziel",
-    input: "Nachricht schreiben...",
-    send: "Senden",
-    welcome: "Hallo! Ich bin dein KI-Sprachtutor.",
-    welcome2: "Wir können frei sprechen und deine Sprache üben.",
-    connected: "Verbunden"
-  },
-
-  fr: {
-    title: "Tuteur IA",
-    subtitle: "Conversation en ligne",
-    learning: "Langue étudiée",
-    level: "Niveau",
-    goal: "Objectif",
-    input: "Écrivez un message...",
-    send: "Envoyer",
-    welcome: "Bonjour ! Je suis votre tuteur de langue IA.",
-    welcome2: "Nous pouvons discuter librement et pratiquer la langue.",
-    connected: "Connecté"
-  }
-
-};
-
-
-function getUI(lang) {
-
-  return UI[lang] || UI.en;
-
-}
-
-
-// =====================================================
-// TELEGRAM INIT
-// =====================================================
-
-if (tg) {
-
-  tg.ready();
-
-  tg.expand();
-
-  telegramUser =
-    tg.initDataUnsafe?.user || null;
-
-  connectTelegramUser();
-
-} else {
-
-  document.getElementById(
-    "userStatus"
-  ).textContent =
-    "Telegram WebApp unavailable";
-
-}
-
-
-// =====================================================
-// CONNECT USER
-// =====================================================
-
-async function connectTelegramUser() {
-
-  const status =
-    document.getElementById(
-      "userStatus"
-    );
-
-
-  if (!tg || !tg.initData) {
-
-    status.textContent =
-      "Telegram connection unavailable";
-
-    return;
-
-  }
-
-
-  try {
-
-    const response =
-      await fetch(
-        RAPID_URL,
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type":
-              "application/json"
-          },
-
-          body: JSON.stringify({
-            initData:
-              tg.initData
-          })
-        }
-      );
-
-
-    const data =
-      await response.json();
-
-
-    console.log(
-      "rapid-worker response:",
-      data
-    );
-
-
-    if (
-      !response.ok ||
-      !data.ok
-    ) {
-
-      status.textContent =
-        "Telegram verification failed";
-
-      return;
-
-    }
-
+  if (tg) {
+    tg.ready();
+    tg.expand();
 
     telegramUser =
-      data.user;
+      tg.initDataUnsafe?.user || null;
 
-    userProfile =
-      data.profile;
-
-
-    setupInterface(
-      userProfile
-    );
-
-
-    await loadChatHistory();
-
-
-  } catch (error) {
-
-    console.error(error);
-
-    status.textContent =
-      "Connection error";
-
+    connectTelegramUser();
+  } else {
+    setStatus("connectionError", "error");
   }
 
-}
+
+  /* =========================================================
+     LANGUAGE HELPERS
+     ========================================================= */
+
+  function getInterfaceLanguage() {
+    return (
+      userProfile?.interface_language ||
+      "en"
+    );
+  }
+
+  function t(key) {
+    const lang =
+      getInterfaceLanguage();
+
+    return (
+      UI[lang]?.[key] ||
+      UI.en[key] ||
+      key
+    );
+  }
 
 
-// =====================================================
-// SETUP INTERFACE
-// =====================================================
+  /* =========================================================
+     STATUS
+     ========================================================= */
 
-function setupInterface(profile) {
+  function setStatus(
+    key,
+    className = ""
+  ) {
+    userStatus.textContent = t(key);
 
-  const lang =
-    profile?.interface_language ||
-    "en";
+    userStatus.className =
+      "status" +
+      (className
+        ? " " + className
+        : "");
 
+    setAvatarState(className);
+  }
 
-  const ui =
-    getUI(lang);
+  function setAvatarState(state) {
+    avatar.classList.remove(
+      "listening",
+      "recording",
+      "thinking",
+      "speaking"
+    );
 
-
-  document.documentElement.lang =
-    lang;
-
-
-  document.getElementById(
-    "title"
-  ).textContent =
-    ui.title;
-
-
-  document.getElementById(
-    "subtitle"
-  ).textContent =
-    ui.subtitle;
-
-
-  document.getElementById(
-    "learningLabel"
-  ).textContent =
-    ui.learning;
-
-
-  document.getElementById(
-    "levelLabel"
-  ).textContent =
-    ui.level;
+    if (
+      state === "listening" ||
+      state === "recording" ||
+      state === "thinking" ||
+      state === "speaking"
+    ) {
+      avatar.classList.add(state);
+    }
+  }
 
 
-  document.getElementById(
-    "goalLabel"
-  ).textContent =
-    ui.goal;
+  /* =========================================================
+     CONNECT USER
+     ========================================================= */
+
+  async function connectTelegramUser() {
+
+    setStatus(
+      "connecting"
+    );
+
+    try {
+
+      if (!tg?.initData) {
+        throw new Error(
+          "Telegram initData unavailable"
+        );
+      }
+
+      const response =
+        await fetch(
+          RAPID_URL,
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json"
+            },
+
+            body: JSON.stringify({
+              initData: tg.initData
+            })
+          }
+        );
+
+      if (!response.ok) {
+        throw new Error(
+          "Connection failed"
+        );
+      }
+
+      const data =
+        await response.json();
+
+      if (
+        !data?.user ||
+        !data?.profile
+      ) {
+        throw new Error(
+          "Invalid profile response"
+        );
+      }
+
+      telegramUser =
+        data.user;
+
+      userProfile =
+        data.profile;
+
+      setupInterface(
+        userProfile
+      );
+
+      await loadChatHistory();
+
+      setStatus(
+        "ready"
+      );
+
+      /*
+       * Voice mode starts only after
+       * profile + history are loaded.
+       */
+      await initVoiceMode();
+
+    } catch (error) {
+
+      console.error(
+        "Connection error:",
+        error
+      );
+
+      setStatus(
+        "connectionError",
+        "error"
+      );
+    }
+  }
 
 
-  document.getElementById(
-    "messageInput"
-  ).placeholder =
-    ui.input;
+  /* =========================================================
+     INTERFACE
+     ========================================================= */
+
+  function setupInterface(
+    profile
+  ) {
+
+    const language =
+      profile.interface_language ||
+      "en";
+
+    const ui =
+      UI[language] ||
+      UI.en;
+
+    titleElement.textContent =
+      ui.title;
+
+    subtitleElement.textContent =
+      ui.subtitle;
+
+    messageInput.placeholder =
+      ui.typeMessage;
+
+    showProfile(
+      profile
+    );
+  }
 
 
-  document.getElementById(
-    "sendButton"
-  ).textContent =
-    ui.send;
+  function showProfile(
+    profile
+  ) {
 
-
-  document.getElementById(
-    "userStatus"
-  ).textContent =
-    ui.connected +
-    ": " +
-    (
+    const name =
       telegramUser?.first_name ||
-      "User"
-    );
+      telegramUser?.username ||
+      "User";
 
+    profileName.textContent =
+      name;
 
-  showProfile(
-    profile,
-    lang
-  );
+    const learning =
+      profile.learning_language ||
+      "—";
 
+    const level =
+      profile.level ||
+      "—";
 
-  showWelcome(
-    ui
-  );
+    const goal =
+      profile.goal ||
+      "—";
 
-}
-
-
-// =====================================================
-// PROFILE
-// =====================================================
-
-function showProfile(
-  profile,
-  lang
-) {
-
-  if (!profile) {
-    return;
+    profileDetails.textContent =
+      `${learning} · ${level} · ${goal}`;
   }
 
 
-  document.getElementById(
-    "profileName"
-  ).textContent =
-    profile.first_name ||
-    "User";
+  /* =========================================================
+     WELCOME
+     ========================================================= */
 
+  function showWelcome() {
 
-  document.getElementById(
-    "learningLanguage"
-  ).textContent =
-    profile.learning_language ||
-    "—";
+    chat.innerHTML = "";
 
+    const language =
+      getInterfaceLanguage();
 
-  document.getElementById(
-    "level"
-  ).textContent =
-    profile.level ||
-    "—";
+    let welcome =
+      UI[language]?.subtitle ||
+      UI.en.subtitle;
 
-
-  document.getElementById(
-    "goal"
-  ).textContent =
-    profile.goal ||
-    "—";
-
-
-  document.getElementById(
-    "profile"
-  ).style.display =
-    "block";
-
-}
-
-
-// =====================================================
-// WELCOME
-// =====================================================
-
-function showWelcome(ui) {
-
-  chat.innerHTML =
-    "";
-
-
-  const first =
-    document.createElement(
-      "div"
+    addMessage(
+      "bot",
+      welcome
     );
+  }
 
 
-  first.className =
-    "message bot";
+  /* =========================================================
+     HISTORY
+     ========================================================= */
 
+  async function loadChatHistory() {
 
-  first.textContent =
-    ui.welcome;
+    try {
 
+      const response =
+        await fetch(
+          RAPID_URL,
+          {
+            method: "POST",
 
-  chat.appendChild(
-    first
-  );
+            headers: {
+              "Content-Type":
+                "application/json"
+            },
 
+            body: JSON.stringify({
+              initData:
+                tg.initData,
 
-  const second =
-    document.createElement(
-      "div"
-    );
+              load_history:
+                true
+            })
+          }
+        );
 
+      if (!response.ok) {
+        throw new Error(
+          "History request failed"
+        );
+      }
 
-  second.className =
-    "message bot";
+      const data =
+        await response.json();
 
+      /*
+       * IMPORTANT:
+       * Empty history must preserve
+       * the welcome message.
+       */
+      if (
+        !Array.isArray(data.history) ||
+        data.history.length === 0
+      ) {
+        showWelcome();
+        return;
+      }
 
-  second.textContent =
-    ui.welcome2;
+      chat.innerHTML = "";
 
+      data.history.forEach(
+        message => {
 
-  chat.appendChild(
-    second
-  );
+          if (
+            !message?.role ||
+            !message?.content
+          ) {
+            return;
+          }
 
+          const role =
+            message.role === "user"
+              ? "user"
+              : "bot";
 
-  scrollChatToBottom();
-
-}
-
-
-// =====================================================
-// LOAD HISTORY
-// =====================================================
-
-async function loadChatHistory() {
-
-  try {
-
-    const response =
-      await fetch(
-        RAPID_URL,
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type":
-              "application/json"
-          },
-
-          body: JSON.stringify({
-            initData:
-              tg.initData,
-
-            load_history:
-              true
-          })
+          addMessage(
+            role,
+            message.content,
+            false
+          );
         }
       );
 
+      scrollChatToBottom();
 
-    const data =
-      await response.json();
-
-
-    if (
-      !response.ok ||
-      !data.ok ||
-      !data.history
-    ) {
+    } catch (error) {
 
       console.error(
-        "History load failed:",
-        data
+        "History error:",
+        error
       );
 
-      return;
-
+      /*
+       * Do not leave the user
+       * with an empty screen.
+       */
+      showWelcome();
     }
+  }
 
 
-    chat.innerHTML =
-      "";
+  /* =========================================================
+     CHAT UI
+     ========================================================= */
 
+  function addMessage(
+    role,
+    text,
+    shouldScroll = true
+  ) {
 
-    data.history.forEach(
-      (message) => {
+    const wrapper =
+      document.createElement(
+        "div"
+      );
 
-        const messageElement =
-          document.createElement(
-            "div"
-          );
+    wrapper.className =
+      `message ${role}`;
 
+    const bubble =
+      document.createElement(
+        "div"
+      );
 
-        messageElement.className =
-          message.role === "user"
-            ? "message user"
-            : "message bot";
+    bubble.className =
+      "bubble";
 
+    bubble.textContent =
+      text;
 
-        messageElement.textContent =
-          message.content;
-
-
-        chat.appendChild(
-          messageElement
-        );
-
-      }
+    wrapper.appendChild(
+      bubble
     );
 
+    chat.appendChild(
+      wrapper
+    );
+
+    if (shouldScroll) {
+      scrollChatToBottom();
+    }
+
+    return bubble;
+  }
+
+
+  function addThinkingMessage() {
+
+    const wrapper =
+      document.createElement(
+        "div"
+      );
+
+    wrapper.className =
+      "message bot";
+
+    const bubble =
+      document.createElement(
+        "div"
+      );
+
+    bubble.className =
+      "bubble";
+
+    const thinking =
+      document.createElement(
+        "div"
+      );
+
+    thinking.className =
+      "thinking";
+
+    for (let i = 0; i < 3; i++) {
+
+      const dot =
+        document.createElement(
+          "span"
+        );
+
+      thinking.appendChild(
+        dot
+      );
+    }
+
+    bubble.appendChild(
+      thinking
+    );
+
+    wrapper.appendChild(
+      bubble
+    );
+
+    chat.appendChild(
+      wrapper
+    );
 
     scrollChatToBottom();
 
-
-  } catch (error) {
-
-    console.error(
-      "History load error:",
-      error
-    );
-
+    return wrapper;
   }
 
-}
+
+  function scrollChatToBottom() {
+
+    requestAnimationFrame(
+      () => {
+        chat.scrollTop =
+          chat.scrollHeight;
+      }
+    );
+  }
 
 
-// =====================================================
-// CREATE AI AUDIO PLAYER
-// =====================================================
+  /* =========================================================
+     AUDIO PLAYER
+     ========================================================= */
 
-function addAudioPlayer(
-  container,
-  audioBlob
-) {
+  function cleanupAudioUrl() {
 
-  if (
-    !container ||
-    !audioBlob
+    if (currentAudioUrl) {
+
+      URL.revokeObjectURL(
+        currentAudioUrl
+      );
+
+      currentAudioUrl =
+        null;
+    }
+  }
+
+
+  function stopCurrentAudio() {
+
+    if (currentAudio) {
+
+      try {
+        currentAudio.pause();
+      } catch (_) {}
+
+      try {
+        currentAudio.currentTime = 0;
+      } catch (_) {}
+
+      currentAudio = null;
+    }
+
+    cleanupAudioUrl();
+
+    isSpeaking = false;
+  }
+
+
+  function addAudioPlayer(
+    container,
+    audioBlob
   ) {
 
-    return;
-
-  }
-
-
-  const audioUrl =
-    URL.createObjectURL(
-      audioBlob
-    );
-
-
-  const audio =
-    document.createElement(
-      "audio"
-    );
-
-
-  audio.className =
-    "voice-player";
-
-
-  audio.controls =
-    true;
-
-
-  audio.preload =
-    "metadata";
-
-
-  audio.src =
-    audioUrl;
-
-
-  container.appendChild(
-    audio
-  );
-
-
-  scrollChatToBottom();
-
-
-  return audio;
-
-}
-
-
-// =====================================================
-// PLAY AI SPEECH + ADD REPLAY PLAYER
-// =====================================================
-
-async function playSpeech(
-  text,
-  messageContainer
-) {
-
-  if (!text) {
-    return;
-  }
-
-
-  try {
-
-    console.log(
-      "REQUESTING TTS"
-    );
-
-
-    const response =
-      await fetch(
-        RAPID_URL,
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type":
-              "application/json"
-          },
-
-          body: JSON.stringify({
-            initData:
-              tg.initData,
-
-            tts:
-              true,
-
-            text:
-              text
-          })
-        }
-      );
-
-
-    const data =
-      await response.json();
-
-
-    console.log(
-      "TTS RESPONSE:",
-      data
-    );
-
-
-    if (
-      !response.ok ||
-      !data.ok ||
-      !data.audio
-    ) {
-
-      console.error(
-        "TTS failed:",
-        data
-      );
-
-      return;
-
-    }
-
-
-    const binaryString =
-      atob(
-        data.audio
-      );
-
-
-    const len =
-      binaryString.length;
-
-
-    const bytes =
-      new Uint8Array(
-        len
-      );
-
-
-    for (
-      let i = 0;
-      i < len;
-      i++
-    ) {
-
-      bytes[i] =
-        binaryString.charCodeAt(i);
-
-    }
-
-
-    const audioBlob =
-      new Blob(
-        [bytes],
-        {
-          type:
-            "audio/mpeg"
-        }
-      );
-
-
-    const audio =
-      addAudioPlayer(
-        messageContainer,
+    const url =
+      URL.createObjectURL(
         audioBlob
       );
 
+    const audio =
+      document.createElement(
+        "audio"
+      );
 
-    if (currentAudio) {
+    audio.controls = true;
+    audio.className =
+      "audio-player";
 
-      try {
+    audio.src = url;
 
-        currentAudio.pause();
+    audio.addEventListener(
+      "ended",
+      () => {
+        URL.revokeObjectURL(url);
+      },
+      { once: true }
+    );
 
-      } catch {}
+    container.appendChild(
+      audio
+    );
 
-      currentAudio =
-        null;
+    scrollChatToBottom();
 
+    return audio;
+  }
+
+
+  /* =========================================================
+     TTS
+     ========================================================= */
+
+  async function playSpeech(
+    text,
+    messageContainer
+  ) {
+
+    if (!text) {
+      resumeListening();
+      return;
     }
 
+    /*
+     * Stop previous audio immediately.
+     */
+    stopCurrentAudio();
 
-    currentAudio =
-      audio;
+    isSpeaking = true;
 
+    setStatus(
+      "speaking",
+      "speaking"
+    );
 
-    if (currentAudio) {
+    try {
 
+      const response =
+        await fetch(
+          RAPID_URL,
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json"
+            },
+
+            body: JSON.stringify({
+              initData:
+                tg.initData,
+
+              tts: true,
+
+              text
+            })
+          }
+        );
+
+      if (!response.ok) {
+        throw new Error(
+          "TTS request failed"
+        );
+      }
+
+      const data =
+        await response.json();
+
+      if (!data?.audio) {
+        throw new Error(
+          "TTS audio missing"
+        );
+      }
+
+      const binary =
+        atob(data.audio);
+
+      const bytes =
+        new Uint8Array(
+          binary.length
+        );
+
+      for (
+        let i = 0;
+        i < binary.length;
+        i++
+      ) {
+        bytes[i] =
+          binary.charCodeAt(i);
+      }
+
+      const blob =
+        new Blob(
+          [bytes],
+          {
+            type: "audio/mpeg"
+          }
+        );
+
+      /*
+       * Add visible fallback player.
+       */
+      const audio =
+        addAudioPlayer(
+          messageContainer,
+          blob
+        );
+
+      currentAudio =
+        audio;
+
+      currentAudioUrl =
+        audio.src;
+
+      audio.addEventListener(
+        "ended",
+        () => {
+
+          if (
+            currentAudio === audio
+          ) {
+            currentAudio = null;
+            currentAudioUrl = null;
+          }
+
+          isSpeaking = false;
+
+          resumeListening();
+        },
+        { once: true }
+      );
+
+      audio.addEventListener(
+        "error",
+        () => {
+
+          if (
+            currentAudio === audio
+          ) {
+            currentAudio = null;
+          }
+
+          isSpeaking = false;
+
+          setStatus(
+            "audioError",
+            "error"
+          );
+
+          showVoiceHint(
+            t("audioError")
+          );
+
+          resumeListening();
+        },
+        { once: true }
+      );
+
+      /*
+       * Try autoplay.
+       */
       try {
 
-        await currentAudio.play();
+        await audio.play();
+
+        pendingAudioRetry =
+          false;
 
       } catch (playError) {
 
         console.warn(
-          "AUTOPLAY BLOCKED:",
+          "Autoplay blocked:",
           playError
         );
 
+        /*
+         * Browser may require a user gesture.
+         * Keep the player visible and
+         * continue voice mode when possible.
+         */
+        pendingAudioRetry =
+          true;
+
+        isSpeaking = false;
+
+        showVoiceHint(
+          t("enableVoice")
+        );
+
+        resumeListening();
       }
 
-    }
+    } catch (error) {
 
-
-    scrollChatToBottom();
-
-
-  } catch (error) {
-
-    console.error(
-      "TTS PLAY ERROR:",
-      error
-    );
-
-  }
-
-}
-
-
-// =====================================================
-// SEND TEXT MESSAGE
-// =====================================================
-
-async function sendMessage() {
-
-  console.log(
-    "SEND MESSAGE START"
-  );
-
-
-  const input =
-    document.getElementById(
-      "messageInput"
-    );
-
-
-  const text =
-    input.value.trim();
-
-
-  if (!text) {
-    return;
-  }
-
-
-  console.log(
-    "MESSAGE:",
-    text
-  );
-
-
-  const sendButton =
-    document.getElementById(
-      "sendButton"
-    );
-
-
-  const userMessage =
-    document.createElement(
-      "div"
-    );
-
-
-  userMessage.className =
-    "message user";
-
-
-  userMessage.textContent =
-    text;
-
-
-  chat.appendChild(
-    userMessage
-  );
-
-
-  input.value =
-    "";
-
-
-  scrollChatToBottom();
-
-
-  const thinking =
-    document.createElement(
-      "div"
-    );
-
-
-  thinking.className =
-    "message bot";
-
-
-  thinking.textContent =
-    "...";
-
-
-  chat.appendChild(
-    thinking
-  );
-
-
-  scrollChatToBottom();
-
-
-  sendButton.disabled =
-    true;
-
-
-  console.log(
-    "BEFORE FETCH"
-  );
-
-
-  try {
-
-    const response =
-      await fetch(
-        RAPID_URL,
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type":
-              "application/json"
-          },
-
-          body: JSON.stringify({
-            initData:
-              tg.initData,
-
-            message:
-              text
-          })
-        }
+      console.error(
+        "TTS error:",
+        error
       );
 
+      isSpeaking = false;
 
-    console.log(
-      "FETCH RESPONSE:",
-      response.status
-    );
+      setStatus(
+        "audioError",
+        "error"
+      );
 
+      showVoiceHint(
+        t("audioError")
+      );
 
-    const data =
-      await response.json();
-
-
-    console.log(
-      "AI RESPONSE:",
-      data
-    );
-
-
-    if (
-      !response.ok ||
-      !data.ok
-    ) {
-
-      thinking.textContent =
-        data.error ||
-        "AI response failed.";
+      resumeListening();
+    }
+  }
 
 
-      scrollChatToBottom();
+  /* =========================================================
+     TEXT CHAT
+     ========================================================= */
 
+  async function sendMessage() {
 
+    if (isSending) {
       return;
-
     }
 
+    const text =
+      messageInput.value.trim();
 
-    thinking.textContent =
-      data.answer ||
-      "...";
+    if (!text) {
+      return;
+    }
 
+    /*
+     * Stop voice detection while
+     * manually sending text.
+     */
+    isSending = true;
 
-    scrollChatToBottom();
+    stopCurrentAudio();
 
-
-  } catch (error) {
-
-    console.error(
-      "FETCH ERROR:",
-      error
-    );
-
-
-    thinking.textContent =
-      "Connection error.";
-
-
-    scrollChatToBottom();
-
-
-  } finally {
+    isThinking = true;
 
     sendButton.disabled =
-      false;
+      true;
 
-  }
+    messageInput.value =
+      "";
 
-}
-
-
-// =====================================================
-// SEND VOICE TEXT TO AI + TTS
-// =====================================================
-
-async function sendVoiceToAI(
-  text
-) {
-
-  const thinking =
-    document.createElement(
-      "div"
+    addMessage(
+      "user",
+      text
     );
 
+    const thinking =
+      addThinkingMessage();
 
-  thinking.className =
-    "message bot";
+    setStatus(
+      "thinking",
+      "thinking"
+    );
+
+    try {
+
+      const response =
+        await fetch(
+          RAPID_URL,
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json"
+            },
+
+            body: JSON.stringify({
+              initData:
+                tg.initData,
+
+              message: text
+            })
+          }
+        );
+
+      if (!response.ok) {
+        throw new Error(
+          "Message request failed"
+        );
+      }
+
+      const data =
+        await response.json();
+
+      thinking.remove();
+
+      if (!data?.answer) {
+        throw new Error(
+          "Answer missing"
+        );
+      }
+
+      const bubble =
+        addMessage(
+          "bot",
+          data.answer
+        );
+
+      /*
+       * Text remains a fallback mode.
+       * Voice mode is handled automatically
+       * through the microphone.
+       */
+
+    } catch (error) {
+
+      console.error(
+        "Send message error:",
+        error
+      );
+
+      thinking.remove();
+
+      addMessage(
+        "bot",
+        t("requestError")
+      );
+
+      setStatus(
+        "error",
+        "error"
+      );
+
+    } finally {
+
+      isSending = false;
+      isThinking = false;
+
+      sendButton.disabled =
+        false;
+
+      /*
+       * Give the automatic listener
+       * a chance to resume.
+       */
+      resumeListening();
+    }
+  }
 
 
-  thinking.textContent =
-    "...";
+  /* =========================================================
+     VOICE -> AI
+     ========================================================= */
+
+  async function sendVoiceToAI(
+    text
+  ) {
+
+    if (!text || isSending) {
+      return;
+    }
+
+    isSending = true;
+    isThinking = true;
+
+    stopCurrentAudio();
+
+    const userBubble =
+      addMessage(
+        "user",
+        text
+      );
+
+    const thinking =
+      addThinkingMessage();
+
+    setStatus(
+      "thinking",
+      "thinking"
+    );
+
+    try {
+
+      const response =
+        await fetch(
+          RAPID_URL,
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json"
+            },
+
+            body: JSON.stringify({
+              initData:
+                tg.initData,
+
+              message: text,
+
+              voice: true
+            })
+          }
+        );
+
+      if (!response.ok) {
+        throw new Error(
+          "Voice AI request failed"
+        );
+      }
+
+      const data =
+        await response.json();
+
+      thinking.remove();
+
+      if (!data?.answer) {
+        throw new Error(
+          "Answer missing"
+        );
+      }
+
+      const bubble =
+        addMessage(
+          "bot",
+          data.answer
+        );
+
+      await playSpeech(
+        data.answer,
+        bubble
+      );
+
+    } catch (error) {
+
+      console.error(
+        "Voice AI error:",
+        error
+      );
+
+      thinking.remove();
+
+      addMessage(
+        "bot",
+        t("voiceError")
+      );
+
+      setStatus(
+        "error",
+        "error"
+      );
+
+      resumeListening();
+
+    } finally {
+
+      isSending = false;
+      isThinking = false;
+    }
+  }
 
 
-  chat.appendChild(
-    thinking
+  /* =========================================================
+     MICROPHONE
+     ========================================================= */
+
+  async function initVoiceMode() {
+
+    if (
+      voiceInitialized ||
+      voiceInitializing
+    ) {
+      return;
+    }
+
+    voiceInitializing = true;
+
+    try {
+
+      if (
+        !navigator.mediaDevices ||
+        !navigator.mediaDevices.getUserMedia
+      ) {
+        throw new Error(
+          "getUserMedia unavailable"
+        );
+      }
+
+      setStatus(
+        "listening",
+        "listening"
+      );
+
+      mediaStream =
+        await navigator.mediaDevices.getUserMedia(
+          {
+            audio: {
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true
+            }
+          }
+        );
+
+      await setupVoiceAnalyser();
+
+      voiceInitialized =
+        true;
+
+      voiceInitializing =
+        false;
+
+      startVoiceDetection();
+
+    } catch (error) {
+
+      voiceInitializing =
+        false;
+
+      console.error(
+        "Microphone initialization error:",
+        error
+      );
+
+      if (
+        error?.name ===
+        "NotAllowedError"
+      ) {
+
+        setStatus(
+          "microphoneDenied",
+          "error"
+        );
+
+        showVoiceHint(
+          t("microphone")
+        );
+
+      } else {
+
+        setStatus(
+          "microphoneUnavailable",
+          "error"
+        );
+
+        showVoiceHint(
+          t("microphoneUnavailable")
+        );
+      }
+    }
+  }
+
+
+  async function setupVoiceAnalyser() {
+
+    audioContext =
+      new (
+        window.AudioContext ||
+        window.webkitAudioContext
+      )();
+
+    if (
+      audioContext.state ===
+      "suspended"
+    ) {
+      try {
+        await audioContext.resume();
+      } catch (_) {}
+    }
+
+    const source =
+      audioContext.createMediaStreamSource(
+        mediaStream
+      );
+
+    analyser =
+      audioContext.createAnalyser();
+
+    analyser.fftSize =
+      VOICE_CONFIG.analyserFftSize;
+
+    analyser.smoothingTimeConstant =
+      0.75;
+
+    analyserData =
+      new Uint8Array(
+        analyser.fftSize
+      );
+
+    source.connect(
+      analyser
+    );
+
+    calibrationStartedAt =
+      performance.now();
+
+    noiseFloor =
+      0.012;
+  }
+
+
+  /* =========================================================
+     VAD
+     ========================================================= */
+
+  function startVoiceDetection() {
+
+    if (
+      !analyser ||
+      !analyserData
+    ) {
+      return;
+    }
+
+    if (animationFrame) {
+      cancelAnimationFrame(
+        animationFrame
+      );
+    }
+
+    const detect =
+      () => {
+
+        animationFrame =
+          requestAnimationFrame(
+            detect
+          );
+
+        if (!voiceInitialized) {
+          return;
+        }
+
+        analyser.getByteTimeDomainData(
+          analyserData
+        );
+
+        const rms =
+          calculateRms(
+            analyserData
+          );
+
+        const now =
+          performance.now();
+
+        /*
+         * Initial noise calibration.
+         */
+        if (
+          now -
+          calibrationStartedAt <
+          VOICE_CONFIG.noiseCalibrationMs
+        ) {
+
+          noiseFloor =
+            noiseFloor * 0.95 +
+            rms * 0.05;
+
+          return;
+        }
+
+        const threshold =
+          Math.max(
+            VOICE_CONFIG.speechThresholdMin,
+            noiseFloor *
+              VOICE_CONFIG.speechThresholdMultiplier
+          );
+
+        const voice =
+          rms > threshold;
+
+        /*
+         * AI is thinking:
+         * don't start another request.
+         */
+        if (isThinking) {
+          return;
+        }
+
+        /*
+         * AI is speaking:
+         * listen only for user interruption.
+         */
+        if (isSpeaking) {
+
+          handleSpeakingInterrupt(
+            voice,
+            now
+          );
+
+          return;
+        }
+
+        /*
+         * Normal listening.
+         */
+        if (voice) {
+
+          lastVoiceAt =
+            now;
+
+          if (
+            !isUserSpeaking
+          ) {
+
+            if (
+              !voiceStartTimer
+            ) {
+
+              voiceStartTimer =
+                setTimeout(
+                  () => {
+
+                    voiceStartTimer =
+                      null;
+
+                    startRecording();
+
+                  },
+                  VOICE_CONFIG
+                    .speechStartHoldMs
+                );
+            }
+
+          }
+
+        } else {
+
+          if (
+            isUserSpeaking
+          ) {
+
+            const silenceDuration =
+              now -
+              lastVoiceAt;
+
+            if (
+              silenceDuration >=
+              VOICE_CONFIG
+                .speechStopSilenceMs
+            ) {
+
+              stopRecording();
+            }
+          }
+        }
+      };
+
+    detect();
+  }
+
+
+  function calculateRms(
+    data
+  ) {
+
+    let sum = 0;
+
+    for (
+      let i = 0;
+      i < data.length;
+      i++
+    ) {
+
+      const normalized =
+        (data[i] - 128) / 128;
+
+      sum +=
+        normalized *
+        normalized;
+    }
+
+    return Math.sqrt(
+      sum / data.length
+    );
+  }
+
+
+  /* =========================================================
+     SPEECH INTERRUPTION
+     ========================================================= */
+
+  let interruptStartedAt = 0;
+
+  function handleSpeakingInterrupt(
+    voice,
+    now
+  ) {
+
+    if (!voice) {
+
+      interruptStartedAt =
+        0;
+
+      return;
+    }
+
+    /*
+     * Avoid reacting immediately
+     * to the first tiny echo/transient.
+     */
+    if (
+      !interruptStartedAt
+    ) {
+
+      interruptStartedAt =
+        now;
+
+      return;
+    }
+
+    const duration =
+      now -
+      interruptStartedAt;
+
+    if (
+      duration <
+      VOICE_CONFIG.interruptHoldMs
+    ) {
+      return;
+    }
+
+    if (
+      now -
+      lastInterruptAt <
+      VOICE_CONFIG.interruptCooldownMs
+    ) {
+      return;
+    }
+
+    lastInterruptAt =
+      now;
+
+    /*
+     * User has interrupted the tutor.
+     */
+    stopCurrentAudio();
+
+    isSpeaking =
+      false;
+
+    isUserSpeaking =
+      false;
+
+    setStatus(
+      "interrupted",
+      "recording"
+    );
+
+    startRecording();
+  }
+
+
+  /* =========================================================
+     RECORDING
+     ========================================================= */
+
+  function getSupportedMimeType() {
+
+    const candidates = [
+      "audio/webm;codecs=opus",
+      "audio/webm",
+      "audio/mp4",
+      "audio/mpeg"
+    ];
+
+    for (
+      const type of candidates
+    ) {
+
+      if (
+        window.MediaRecorder &&
+        MediaRecorder.isTypeSupported(
+          type
+        )
+      ) {
+        return type;
+      }
+    }
+
+    return "";
+  }
+
+
+  function startRecording() {
+
+    if (
+      isUserSpeaking ||
+      isSending ||
+      isThinking ||
+      isSpeaking ||
+      !mediaStream
+    ) {
+      return;
+    }
+
+    /*
+     * Cancel pending start timer.
+     */
+    if (voiceStartTimer) {
+
+      clearTimeout(
+        voiceStartTimer
+      );
+
+      voiceStartTimer =
+        null;
+    }
+
+    /*
+     * Prevent multiple recorders.
+     */
+    if (
+      mediaRecorder &&
+      mediaRecorder.state !==
+        "inactive"
+    ) {
+      return;
+    }
+
+    const mimeType =
+      getSupportedMimeType();
+
+    try {
+
+      mediaRecorder =
+        mimeType
+          ? new MediaRecorder(
+              mediaStream,
+              { mimeType }
+            )
+          : new MediaRecorder(
+              mediaStream
+            );
+
+    } catch (error) {
+
+      console.error(
+        "MediaRecorder error:",
+        error
+      );
+
+      setStatus(
+        "microphoneUnavailable",
+        "error"
+      );
+
+      return;
+    }
+
+    recordingChunks = [];
+
+    isUserSpeaking =
+      true;
+
+    speechDetectedAt =
+      performance.now();
+
+    lastVoiceAt =
+      performance.now();
+
+    setStatus(
+      "recording",
+      "recording"
+    );
+
+    mediaRecorder.ondataavailable =
+      event => {
+
+        if (
+          event.data &&
+          event.data.size > 0
+        ) {
+          recordingChunks.push(
+            event.data
+          );
+        }
+      };
+
+    mediaRecorder.onerror =
+      event => {
+
+        console.error(
+          "Recorder error:",
+          event
+        );
+
+        isUserSpeaking =
+          false;
+
+        recordingChunks =
+          [];
+
+        setStatus(
+          "error",
+          "error"
+        );
+      };
+
+    mediaRecorder.onstop =
+      async () => {
+
+        const recorder =
+          mediaRecorder;
+
+        const chunks =
+          recordingChunks;
+
+        mediaRecorder =
+          null;
+
+        recordingChunks =
+          [];
+
+        isUserSpeaking =
+          false;
+
+        if (
+          !chunks.length
+        ) {
+
+          resumeListening();
+          return;
+        }
+
+        const duration =
+          performance.now() -
+          speechDetectedAt;
+
+        if (
+          duration <
+          VOICE_CONFIG
+            .minSpeechDurationMs
+        ) {
+
+          resumeListening();
+          return;
+        }
+
+        const actualMimeType =
+          recorder?.mimeType ||
+          mimeType ||
+          "audio/webm";
+
+        const blob =
+          new Blob(
+            chunks,
+            {
+              type:
+                actualMimeType
+            }
+          );
+
+        await processVoiceBlob(
+          blob,
+          actualMimeType
+        );
+      };
+
+    mediaRecorder.start(
+      100
+    );
+
+    /*
+     * Hard maximum recording time.
+     */
+    setTimeout(
+      () => {
+
+        if (
+          mediaRecorder &&
+          mediaRecorder.state !==
+            "inactive" &&
+          isUserSpeaking
+        ) {
+          stopRecording();
+        }
+
+      },
+      VOICE_CONFIG.maxRecordingMs
+    );
+  }
+
+
+  function stopRecording() {
+
+    if (voiceStartTimer) {
+
+      clearTimeout(
+        voiceStartTimer
+      );
+
+      voiceStartTimer =
+        null;
+    }
+
+    if (
+      !mediaRecorder ||
+      mediaRecorder.state ===
+        "inactive"
+    ) {
+      isUserSpeaking =
+        false;
+
+      return;
+    }
+
+    try {
+      mediaRecorder.stop();
+    } catch (error) {
+
+      console.error(
+        "Stop recording error:",
+        error
+      );
+
+      mediaRecorder =
+        null;
+
+      isUserSpeaking =
+        false;
+
+      resumeListening();
+    }
+  }
+
+
+  /* =========================================================
+     PROCESS VOICE
+     ========================================================= */
+
+  async function processVoiceBlob(
+    audioBlob,
+    mimeType
+  ) {
+
+    if (
+      isSending ||
+      !audioBlob ||
+      audioBlob.size === 0
+    ) {
+      resumeListening();
+      return;
+    }
+
+    isSending =
+      true;
+
+    isThinking =
+      true;
+
+    setStatus(
+      "thinking",
+      "thinking"
+    );
+
+    try {
+
+      const formData =
+        new FormData();
+
+      formData.append(
+        "initData",
+        tg.initData
+      );
+
+      /*
+       * iOS commonly records mp4.
+       * Use a matching filename.
+       */
+      const extension =
+        mimeType.includes("mp4")
+          ? "m4a"
+          : mimeType.includes("mpeg")
+            ? "mp3"
+            : "webm";
+
+      formData.append(
+        "audio",
+        audioBlob,
+        `voice.${extension}`
+      );
+
+      const response =
+        await fetch(
+          RAPID_URL,
+          {
+            method: "POST",
+            body: formData
+          }
+        );
+
+      if (!response.ok) {
+        throw new Error(
+          "Voice upload failed"
+        );
+      }
+
+      const data =
+        await response.json();
+
+      const recognizedText =
+        data?.text?.trim();
+
+      if (!recognizedText) {
+        throw new Error(
+          "Empty transcription"
+        );
+      }
+
+      /*
+       * The backend already receives:
+       * initData + audio.
+       *
+       * It returns the transcription.
+       * Then we send that exact text
+       * through the existing voice AI flow.
+       */
+
+      await sendVoiceToAI(
+        recognizedText
+      );
+
+    } catch (error) {
+
+      console.error(
+        "Voice processing error:",
+        error
+      );
+
+      isThinking =
+        false;
+
+      isSending =
+        false;
+
+      addMessage(
+        "bot",
+        t("voiceError")
+      );
+
+      setStatus(
+        "error",
+        "error"
+      );
+
+      resumeListening();
+    }
+  }
+
+
+  /* =========================================================
+     RESUME LISTENING
+     ========================================================= */
+
+  function resumeListening() {
+
+    /*
+     * Do not restart while another request
+     * or speech playback is active.
+     */
+    if (
+      isSending ||
+      isThinking ||
+      isSpeaking ||
+      !voiceInitialized
+    ) {
+      return;
+    }
+
+    isUserSpeaking =
+      false;
+
+    setStatus(
+      "listening",
+      "listening"
+    );
+  }
+
+
+  /* =========================================================
+     VOICE HINT
+     ========================================================= */
+
+  let voiceHintTimer = null;
+
+  function showVoiceHint(
+    text
+  ) {
+
+    if (!text) {
+      return;
+    }
+
+    voiceHint.textContent =
+      text;
+
+    voiceHint.classList.add(
+      "visible"
+    );
+
+    if (voiceHintTimer) {
+      clearTimeout(
+        voiceHintTimer
+      );
+    }
+
+    voiceHintTimer =
+      setTimeout(
+        () => {
+
+          voiceHint.classList.remove(
+            "visible"
+          );
+
+        },
+        3500
+      );
+  }
+
+
+  /* =========================================================
+     USER GESTURE FALLBACK
+     ========================================================= */
+
+  /*
+   * Some iOS / Telegram WebView combinations
+   * block audio.play() after an asynchronous request.
+   *
+   * We don't add a microphone button.
+   * A normal tap anywhere can unlock audio.
+   */
+
+  document.addEventListener(
+    "click",
+    async () => {
+
+      if (
+        audioContext &&
+        audioContext.state ===
+          "suspended"
+      ) {
+
+        try {
+          await audioContext.resume();
+        } catch (_) {}
+      }
+
+      if (
+        pendingAudioRetry &&
+        currentAudio
+      ) {
+
+        try {
+
+          await currentAudio.play();
+
+          pendingAudioRetry =
+            false;
+
+          isSpeaking =
+            true;
+
+          setStatus(
+            "speaking",
+            "speaking"
+          );
+
+        } catch (_) {}
+      }
+
+      /*
+       * If microphone initialization was
+       * blocked before, try again after
+       * a real user gesture.
+       */
+      if (
+        !voiceInitialized &&
+        !voiceInitializing
+      ) {
+        initVoiceMode();
+      }
+
+    },
+    { passive: true }
   );
 
 
-  scrollChatToBottom();
-
-
-  try {
-
-    const response =
-      await fetch(
-        RAPID_URL,
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type":
-              "application/json"
-          },
-
-          body: JSON.stringify({
-
-            initData:
-              tg.initData,
-
-            message:
-              text,
-
-            voice:
-              true
-
-          })
-        }
-      );
-
-
-    const data =
-      await response.json();
-
-
-    console.log(
-      "VOICE AI RESPONSE:",
-      data
-    );
-
-
-    if (
-      !response.ok ||
-      !data.ok
-    ) {
-
-      thinking.textContent =
-        data.error ||
-        "AI response failed.";
-
-
-      scrollChatToBottom();
-
-
-      return;
-
-    }
-
-
-    thinking.textContent =
-      data.answer ||
-      "...";
-
-
-    scrollChatToBottom();
-
-
-    await playSpeech(
-      data.answer,
-      thinking
-    );
-
-
-  } catch (error) {
-
-    console.error(
-      "VOICE AI ERROR:",
-      error
-    );
-
-
-    thinking.textContent =
-      "Connection error.";
-
-
-    scrollChatToBottom();
-
-  }
-
-}
-
-
-// =====================================================
-// MICROPHONE
-// =====================================================
-
-function toggleMic() {
-
-  const button =
-    document.getElementById(
-      "micButton"
-    );
-
-
-  if (
-    !window.MediaRecorder ||
-    !navigator.mediaDevices ||
-    !navigator.mediaDevices.getUserMedia
-  ) {
-
-    alert(
-      "Voice recording is not supported."
-    );
-
-    return;
-
-  }
-
-
-  if (
-    window.currentRecorder &&
-    window.currentRecorder.state ===
-      "recording"
-  ) {
-
-    window.currentRecorder.stop();
-
-    return;
-
-  }
-
-
-  navigator.mediaDevices
-    .getUserMedia({
-      audio: true
-    })
-    .then(
-      function(stream) {
-
-        const recorder =
-          new MediaRecorder(
-            stream
-          );
-
-
-        const audioChunks =
-          [];
-
-
-        window.currentRecorder =
-          recorder;
-
-
-        window.currentAudioChunks =
-          audioChunks;
-
-
-        recorder.ondataavailable =
-          function(event) {
-
-            if (
-              event.data.size > 0
-            ) {
-
-              audioChunks.push(
-                event.data
-              );
-
-            }
-
-          };
-
-
-        recorder.onstop =
-          async function() {
-
-            stream
-              .getTracks()
-              .forEach(
-                function(track) {
-
-                  track.stop();
-
-                }
-              );
-
-
-            button.classList.remove(
-              "active"
-            );
-
-
-            button.textContent =
-              "🎙";
-
-
-            const audioBlob =
-              new Blob(
-                audioChunks,
-                {
-                  type:
-                    recorder.mimeType ||
-                    "audio/webm"
-                }
-              );
-
-
-            console.log(
-              "VOICE RECORDING READY:",
-              audioBlob
-            );
-
-
-            console.log(
-              "VOICE SIZE:",
-              audioBlob.size
-            );
-
-
-            const thinking =
-              document.createElement(
-                "div"
-              );
-
-
-            thinking.className =
-              "message bot";
-
-
-            thinking.textContent =
-              "...";
-
-
-            chat.appendChild(
-              thinking
-            );
-
-
-            scrollChatToBottom();
-
-
-            try {
-
-              const formData =
-                new FormData();
-
-
-              formData.append(
-                "initData",
-                tg.initData
-              );
-
-
-              formData.append(
-                "audio",
-                audioBlob,
-                "voice.webm"
-              );
-
-
-              console.log(
-                "SENDING AUDIO TO BACKEND"
-              );
-
-
-              const response =
-                await fetch(
-                  RAPID_URL,
-                  {
-                    method: "POST",
-
-                    body:
-                      formData
-                  }
-                );
-
-
-              console.log(
-                "AUDIO RESPONSE:",
-                response.status
-              );
-
-
-              const data =
-                await response.json();
-
-
-              console.log(
-                "TRANSCRIPTION RESPONSE:",
-                data
-              );
-
-
-              if (
-                !response.ok ||
-                !data.ok
-              ) {
-
-                thinking.textContent =
-                  data.error ||
-                  "Speech recognition failed.";
-
-
-                scrollChatToBottom();
-
-
-                return;
-
-              }
-
-
-              const recognizedText =
-                data.text ||
-                "";
-
-
-              if (
-                !recognizedText
-              ) {
-
-                thinking.textContent =
-                  "No speech detected.";
-
-
-                scrollChatToBottom();
-
-
-                return;
-
-              }
-
-
-              thinking.remove();
-
-
-              const userVoiceMessage =
-                document.createElement(
-                  "div"
-                );
-
-
-              userVoiceMessage.className =
-                "message user";
-
-
-              userVoiceMessage.textContent =
-                recognizedText;
-
-
-              chat.appendChild(
-                userVoiceMessage
-              );
-
-
-              scrollChatToBottom();
-
-
-              await sendVoiceToAI(
-                recognizedText
-              );
-
-
-            } catch (error) {
-
-              console.error(
-                "VOICE FETCH ERROR:",
-                error
-              );
-
-
-              thinking.textContent =
-                "Connection error.";
-
-
-              scrollChatToBottom();
-
-            }
-
-          };
-
-
-        recorder.start();
-
-
-        button.classList.add(
-          "active"
-        );
-
-
-        button.textContent =
-          "⏹";
-
-
-        console.log(
-          "VOICE RECORDING STARTED"
-        );
-
-      }
-    )
-    .catch(
-      function(error) {
-
-        console.error(
-          "MICROPHONE ERROR:",
-          error
-        );
-
-
-        button.classList.remove(
-          "active"
-        );
-
-
-        button.textContent =
-          "🎙";
-
-
-        alert(
-          "Microphone access is required."
-        );
-
-      }
-    );
-
-}
-
-
-// =====================================================
-// ENTER KEY
-// =====================================================
-
-document
-  .getElementById(
-    "messageInput"
-  )
-  .addEventListener(
+  /* =========================================================
+     INPUT
+     ========================================================= */
+
+  messageInput.addEventListener(
     "keydown",
-    function(event) {
+    event => {
 
       if (
-        event.key === "Enter"
+        event.key === "Enter" &&
+        !event.shiftKey &&
+        !event.isComposing
       ) {
 
         event.preventDefault();
 
-        sendMessage();
+        if (
+          !sendButton.disabled &&
+          !isSending
+        ) {
+          sendMessage();
+        }
+      }
+    }
+  );
 
+
+  /* =========================================================
+     CLEANUP
+     ========================================================= */
+
+  window.addEventListener(
+    "beforeunload",
+    () => {
+
+      if (animationFrame) {
+        cancelAnimationFrame(
+          animationFrame
+        );
       }
 
+      if (mediaRecorder) {
+
+        try {
+          if (
+            mediaRecorder.state !==
+            "inactive"
+          ) {
+            mediaRecorder.stop();
+          }
+        } catch (_) {}
+      }
+
+      if (mediaStream) {
+
+        mediaStream
+          .getTracks()
+          .forEach(
+            track => track.stop()
+          );
+      }
+
+      if (audioContext) {
+
+        try {
+          audioContext.close();
+        } catch (_) {}
+      }
+
+      stopCurrentAudio();
     }
   );
 
