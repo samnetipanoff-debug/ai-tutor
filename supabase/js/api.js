@@ -45,24 +45,6 @@ async function postForm(formData) {
   return response.json();
 }
 
-async function postBinary(payload) {
-  const response = await fetch(RAPID_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      initData: telegram.initData,
-      ...payload,
-    }),
-  });
-
-  if (!response.ok) {
-    const text = await response.text().catch(() => "");
-    throw new Error(`HTTP ${response.status}: ${text}`);
-  }
-
-  return response.blob();
-}
-
 /* =========================================================
    PUBLIC API
    ========================================================= */
@@ -72,7 +54,7 @@ export const api = {
 
   /**
    * Получить профиль пользователя.
-   * При первом запуске создаёт запись с onboarding_step='native_language'.
+   * При первом запуске создаёт запись с onboarding_step='interface_language'.
    */
   getProfile() {
     return postJson({});
@@ -115,8 +97,6 @@ export const api = {
 
   /**
    * Отправить голосовое сообщение (blob).
-   * ВАЖНО: ожидается, что бэкенд вернёт { text, answer }.
-   * Если сейчас возвращает только { text } — работает в fallback-режиме.
    */
   sendVoice(blob, mimeType = "audio/webm") {
     const formData = new FormData();
@@ -132,10 +112,36 @@ export const api = {
   },
 
   /**
-   * Сгенерировать TTS. Возвращает Blob (audio/mpeg).
+   * Сгенерировать TTS.
+   * Возвращает:
+   *   - Blob (audio/mpeg) — если бэк отдаёт сырой mp3
+   *   - { audio: "base64...", format: "mp3" } — если бэк отдаёт JSON
    */
-  tts(text) {
-    return postBinary({ tts: true, text });
+  async tts(text) {
+    const response = await fetch(RAPID_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        initData: telegram.initData,
+        tts: true,
+        text,
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text().catch(() => "");
+      throw new Error(`TTS failed: ${response.status} ${errText}`);
+    }
+
+    const contentType = response.headers.get("content-type") || "";
+
+    // Новый бэк: сырой mp3
+    if (contentType.includes("audio")) {
+      return response.blob();
+    }
+
+    // Текущий бэк: JSON с base64
+    return response.json();
   },
 
   /* ---------- Lessons ---------- */
