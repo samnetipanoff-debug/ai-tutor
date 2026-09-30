@@ -1,5 +1,5 @@
 /* =========================================================
-   CHAT SCREEN — text mode
+   CHAT SCREEN — text + auto voice
    ========================================================= */
 
 import telegram from "../telegram.js";
@@ -17,12 +17,14 @@ import {
   playBlob,
   stopCurrent,
 } from "../audio.js";
+import VoiceEngine from "../voice-engine.js";
 
 /* =========================================================
    LOCAL STATE
    ========================================================= */
 
 let sending = false;
+let lastVoiceBlobSentAt = 0;
 
 /* =========================================================
    RENDER
@@ -66,16 +68,16 @@ export function renderChat() {
   const messages = wrapper.querySelector("#chatMessages");
   const input = wrapper.querySelector("#chatInput");
   const sendBtn = wrapper.querySelector("#chatSend");
+  const scroll = wrapper.querySelector("#chatScroll");
 
-  // Загружаем историю
+  // История
   renderHistory(messages, history, lang);
 
-  // Если истории нет — показываем empty hint
   if (!history || history.length === 0) {
     renderEmpty(messages, lang);
   }
 
-  // Отправка
+  // Текстовый ввод
   sendBtn.addEventListener("click", () => {
     sendTextMessage(input.value, messages, input, sendBtn);
   });
@@ -87,22 +89,20 @@ export function renderChat() {
     }
   });
 
-  // Скролл вниз
-  scrollToBottom(wrapper.querySelector("#chatScroll"));
+  scrollToBottom(scroll);
 
-  // Автофокус (только если не мобильный — чтобы не открывать клавиатуру)
   if (window.innerWidth > 640) {
     input.focus();
   }
 
-  // Сохраняем ссылки для повторного использования
-  wrapper._chatRefs = { messages, input, sendBtn, scroll: wrapper.querySelector("#chatScroll") };
+  // Голосовой движок
+  startVoiceEngine(messages);
 
   return wrapper;
 }
 
 /* =========================================================
-   HISTORY
+   HISTORY / EMPTY
    ========================================================= */
 
 function renderHistory(messages, history, lang) {
@@ -118,8 +118,8 @@ function renderEmpty(messages, lang) {
   const el = document.createElement("div");
   el.className = "chat-empty";
   el.innerHTML = `
-    <div class="chat-empty-emoji">💬</div>
-    <div class="text-sm">${t("chat.hint_listening", null, lang)}</div>
+    <div class="chat-empty-emoji">🎙</div>
+    <div class="text-sm">${t("chat.hint_microphone", null, lang)}</div>
   `;
   messages.appendChild(el);
 }
@@ -129,6 +129,10 @@ function renderEmpty(messages, lang) {
    ========================================================= */
 
 function appendMessage(container, role, text) {
+  // удаляем empty, если есть
+  const empty = container.querySelector(".chat-empty");
+  if (empty) empty.remove();
+
   const wrapper = document.createElement("div");
   wrapper.className = `msg is-${role}`;
 
@@ -139,7 +143,6 @@ function appendMessage(container, role, text) {
   wrapper.appendChild(bubble);
   container.appendChild(wrapper);
 
-  // Скролл
   const scroll = container.closest(".chat-scroll");
   if (scroll) scrollToBottom(scroll);
 
@@ -168,7 +171,7 @@ function appendThinking(container) {
 }
 
 /* =========================================================
-   SEND
+   TEXT SEND
    ========================================================= */
 
 async function sendTextMessage(raw, messages, input, sendBtn) {
@@ -180,6 +183,7 @@ async function sendTextMessage(raw, messages, input, sendBtn) {
   input.value = "";
 
   stopCurrent();
+  pauseVoiceEngine();
 
   appendMessage(messages, "user", text);
 
@@ -189,16 +193,12 @@ async function sendTextMessage(raw, messages, input, sendBtn) {
 
   try {
     const data = await api.sendText(text);
-
     thinking.remove();
 
-    if (!data?.answer) {
-      throw new Error("No answer");
-    }
+    if (!data?.answer) throw new Error("No answer");
 
     const bubble = appendMessage(messages, "bot", data.answer);
 
-    // Обновляем историю в state
     const { history } = getState();
     setState({
       history: [
@@ -208,23 +208,112 @@ async function sendTextMessage(raw, messages, input, sendBtn) {
       ],
     });
 
-    // Пытаемся проиграть TTS
     clearHeaderStatus();
-    await playAnswer(data.answer, bubble);
 
+    await playAnswer(data.answer, bubble);
   } catch (error) {
     console.error("send error:", error);
     thinking.remove();
 
     const lang = getState().profile?.interface_language || "en";
     appendMessage(messages, "bot", t("chat.error_send", null, lang));
+
     setHeaderStatus("chat.error_send", "error");
     setTimeout(clearHeaderStatus, 3000);
   } finally {
     sending = false;
     sendBtn.disabled = false;
+    resumeVoiceEngine();
   }
 }
+
+/* =========================================================
+   VOICE → BACKEND
+   ========================================================= */
+
+async function handleVoiceBlob(blob, mimeType) {
+  if (sending) return;
+  if (!blob || blob.size === 0) return;
+
+  // защита от дубликатов
+  const now = Date.now();
+  if (now - lastVoiceBlobSentAt < 800) return;
+  lastVoiceBlobSentAt = now;
+
+  sending = true;
+  const messages = document.getElementById("chatMessages");
+  if (!messages) {
+    sending = false;
+    return;
+  }
+
+  stopCurrent();
+
+  const engine = getState().voiceEngine;
+  if (engine) engine.notifyFetchStart();
+
+  const thinking = appendThinking(messages);
+
+  setHeaderStatus("chat.hint_thinking", "thinking");
+
+  try {
+    const data = await api.sendVoice(blob, mimeType);
+
+    thinking.remove();
+
+    // Если бэк отдаёт единый { text, answer } — используем оба.
+    // Если только { text } — отправляем текст в LLM вторым запросом.
+    let recognized = data?.text || "";
+    let answer = data?.answer || "";
+
+    if (!recognized) throw new Error("No transcription");
+
+    appendMessage(messages, "user", recognized);
+
+    if (!answer) {
+      // fallback: отдельный LLM-запрос
+      if (engine) engine.notifyFetchEnd();
+      const llm = await api.sendText(recognized, true);
+      answer = llm?.answer || "";
+      if (engine) engine.notifyFetchStart();
+    }
+
+    if (!answer) throw new Error("No answer");
+
+    const bubble = appendMessage(messages, "bot", answer);
+
+    const { history } = getState();
+    setState({
+      history: [
+        ...(history || []),
+        { role: "user", content: recognized },
+        { role: "assistant", content: answer },
+      ],
+    });
+
+    if (engine) engine.notifyFetchEnd();
+    clearHeaderStatus();
+
+    await playAnswer(answer, bubble);
+  } catch (error) {
+    console.error("voice error:", error);
+    thinking.remove();
+
+    const lang = getState().profile?.interface_language || "en";
+    appendMessage(messages, "bot", t("chat.error_voice", null, lang));
+
+    setHeaderStatus("chat.error_voice", "error");
+    setTimeout(clearHeaderStatus, 3000);
+
+    if (engine) engine.notifyFetchEnd();
+  } finally {
+    sending = false;
+  }
+}
+
+/* =========================================================
+   TTS
+   ========================================================= */
 
 async function playAnswer(text, bubble) {
   setHeaderStatus("chat.hint_speaking", "speaking");
@@ -239,6 +328,83 @@ async function playAnswer(text, bubble) {
   await playBlob(blob, bubble);
 
   clearHeaderStatus();
+}
+
+/* =========================================================
+   VOICE ENGINE
+   ========================================================= */
+
+function startVoiceEngine(messages) {
+  // если движок уже создан — просто переиспользуем
+  let engine = getState().voiceEngine;
+
+  if (engine) return;
+
+  engine = new VoiceEngine({
+    onSpeechStart: () => {
+      // авто-запись стартовала
+    },
+
+    onSpeechEnd: (blob, mimeType) => {
+      handleVoiceBlob(blob, mimeType);
+    },
+
+    onBargeIn: () => {
+      // пользователь перебил ИИ — глушим TTS
+      stopCurrent();
+    },
+
+    onStatusChange: (status) => {
+      switch (status) {
+        case "listening":
+          setHeaderStatus("chat.hint_listening", "listening");
+          break;
+        case "recording":
+          setHeaderStatus("chat.hint_recording", "listening");
+          break;
+        case "thinking":
+          setHeaderStatus("chat.hint_thinking", "thinking");
+          break;
+        case "speaking":
+          setHeaderStatus("chat.hint_speaking", "speaking");
+          break;
+        case "interrupted":
+          setHeaderStatus("chat.hint_interrupted", "listening");
+          break;
+        case "idle":
+        case "calibrating":
+          // ничего — ждём
+          break;
+        case "error":
+          // ошибку покажет onError
+          break;
+      }
+    },
+
+    onError: ({ code }) => {
+      console.error("[voice]", code);
+
+      const lang = getState().profile?.interface_language || "en";
+
+      if (code === "mic-denied") {
+        showToast(t("chat.hint_microphone_denied", null, lang), "error");
+      } else if (code === "mic-error") {
+        showToast(t("chat.hint_microphone", null, lang), "error");
+      }
+    },
+  });
+
+  setState({ voiceEngine: engine });
+  engine.start();
+}
+
+function pauseVoiceEngine() {
+  const engine = getState().voiceEngine;
+  if (engine) engine.pause();
+}
+
+function resumeVoiceEngine() {
+  // движок сам вернётся в listening по окончании speaking/fetching
 }
 
 /* =========================================================
