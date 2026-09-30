@@ -1,0 +1,137 @@
+/* =========================================================
+   MENU SCREEN
+   ========================================================= */
+
+.menu {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.menu-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--sp-4);
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.menu-greeting {
+  margin-bottom: var(--sp-5);
+}
+
+.menu-greeting-name {
+  font-size: var(--fs-2xl);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--c-text);
+  margin-bottom: var(--sp-1);
+}
+
+.menu-greeting-sub {
+  font-size: var(--fs-md);
+  color: var(--c-text-3);
+}
+
+.menu-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.menu-card {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+
+  padding: 18px;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-lg);
+
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+
+  transition:
+    border-color var(--t-fast),
+    transform var(--t-fast),
+    box-shadow var(--t-fast);
+}
+
+.menu-card:active {
+  transform: scale(0.99);
+}
+
+.menu-card:hover {
+  border-color: var(--c-primary-soft);
+  box-shadow: var(--sh-md);
+}
+
+.menu-card-icon {
+  width: 52px;
+  height: 52px;
+  flex: 0 0 52px;
+  border-radius: var(--r-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--c-primary-soft);
+  color: var(--c-primary);
+}
+
+.menu-card-icon .icon {
+  width: 24px;
+  height: 24px;
+}
+
+.menu-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.menu-card-title {
+  font-size: var(--fs-md);
+  font-weight: 650;
+  color: var(--c-text);
+  margin-bottom: 3px;
+}
+
+.menu-card-subtitle {
+  font-size: var(--fs-sm);
+  color: var(--c-text-3);
+  line-height: 1.35;
+}
+
+.menu-card-arrow {
+  flex: 0 0 auto;
+  color: var(--c-text-4);
+  width: 20px;
+  height: 20px;
+}
+
+/* Hint при первом запуске */
+.menu-hint {
+  margin-top: var(--sp-5);
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-md);
+  background: var(--c-primary-soft-2);
+  border: 1px solid var(--c-primary-soft);
+  display: flex;
+  gap: var(--sp-3);
+  align-items: flex-start;
+}
+
+.menu-hint-icon {
+  color: var(--c-primary);
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.menu-hint-text {
+  font-size: var(--fs-sm);
+  color: var(--c-text-2);
+  line-height: 1.45;
+}
