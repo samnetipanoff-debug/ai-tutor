@@ -1,40 +1,72 @@
 /* =========================================================
-   AUDIO — TTS player + queue
+   AUDIO — TTS player + voice-engine bridge
    ========================================================= */
 
 import { api } from "./api.js";
 import { getState, setState } from "./state.js";
 
 /* =========================================================
-   SINGLE AUDIO ELEMENT
+   STATE
    ========================================================= */
 
 let currentAudio = null;
 let currentUrl = null;
 
 /* =========================================================
-   PLAY TTS
+   VOICE ENGINE BRIDGE
+   ========================================================= */
+
+function engineNotifyStart() {
+  const engine = getState().voiceEngine;
+  if (engine) engine.notifyTtsStart();
+}
+
+function engineNotifyEnd() {
+  const engine = getState().voiceEngine;
+  if (engine) engine.notifyTtsEnd();
+}
+
+/* =========================================================
+   FETCH TTS
    ========================================================= */
 
 /**
- * Получить аудио для текста (Blob).
+ * Получить TTS как Blob (audio/mpeg).
+ * Поддерживает оба формата: сырой mp3 и {audio: base64}.
  */
 export async function fetchTts(text) {
   if (!text) return null;
+
   try {
-    const blob = await api.tts(text);
-    return blob;
+    const result = await api.tts(text);
+
+    // api.tts возвращает Blob (по нашей текущей реализации)
+    if (result instanceof Blob) return result;
+
+    // fallback: если вернулся объект с base64
+    if (result?.audio) {
+      return base64ToBlob(result.audio, "audio/mpeg");
+    }
+
+    return null;
   } catch (err) {
     console.error("TTS fetch error:", err);
     return null;
   }
 }
 
+/* =========================================================
+   PLAY BLOB
+   ========================================================= */
+
 /**
- * Проиграть Blob в чате.
- * container — DOM-узел, к которому крепится <audio>.
- * Возвращает Promise, который завершается когда воспроизведение закончилось
- * (или сразу — если autoplay заблокирован).
+ * Проиграть Blob. Возвращает Promise<boolean>:
+ *   true  — воспроизведение завершилось нормально
+ *   false — autoplay заблокирован, ошибка, или прервано
+ *
+ * ВАЖНО: вызывать engineNotifyStart до play и engineNotifyEnd
+ * после ended/error. Иначе VAD будет воспринимать эхо
+ * от колонок как речь пользователя.
  */
 export function playBlob(blob, container) {
   return new Promise((resolve) => {
@@ -56,33 +88,36 @@ export function playBlob(blob, container) {
       currentAudioUrl: url,
     });
 
-    const cleanup = () => {
+    engineNotifyStart();
+
+    let settled = false;
+
+    const finish = (result) => {
+      if (settled) return;
+      settled = true;
+
       if (currentUrl === url) {
         URL.revokeObjectURL(url);
         currentUrl = null;
         currentAudio = null;
         setState({ currentAudio: null, currentAudioUrl: null });
       }
+
+      engineNotifyEnd();
+      resolve(result);
     };
 
-    audio.addEventListener("ended", () => {
-      cleanup();
-      resolve(true);
-    }, { once: true });
-
-    audio.addEventListener("error", () => {
-      cleanup();
-      resolve(false);
-    }, { once: true });
+    audio.addEventListener("ended", () => finish(true), { once: true });
+    audio.addEventListener("error", () => finish(false), { once: true });
 
     audio.play()
       .then(() => {
-        // autoplay ok
+        // autoplay ok — ждём ended/error
       })
       .catch((err) => {
         console.warn("Autoplay blocked:", err);
-        // Резолвим сразу — пользователь нажмёт play вручную
-        resolve(false);
+        // Останавливаем и резолвим сразу — пользователь нажмёт play сам
+        finish(false);
       });
   });
 }
@@ -104,8 +139,24 @@ export function stopCurrent() {
   }
 
   setState({ currentAudio: null, currentAudioUrl: null });
+
+  // Сообщаем движку, что TTS закончился (даже если его не было — no-op)
+  engineNotifyEnd();
 }
 
 export function getCurrentAudio() {
   return currentAudio;
+}
+
+/* =========================================================
+   HELPERS
+   ========================================================= */
+
+function base64ToBlob(base64, mime) {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return new Blob([bytes], { type: mime });
 }
