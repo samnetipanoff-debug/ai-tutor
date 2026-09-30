@@ -2535,123 +2535,120 @@
      ========================================================= */
 
   async function processVoiceBlob(
-    audioBlob,
-    mimeType
+  audioBlob,
+  mimeType
+) {
+
+  if (
+    isSending ||
+    !audioBlob ||
+    audioBlob.size === 0
   ) {
+    resumeListening();
+    return;
+  }
 
-    if (
-      isSending ||
-      !audioBlob ||
-      audioBlob.size === 0
-    ) {
-      resumeListening();
-      return;
-    }
+  isThinking = true;
 
-    isSending =
-      true;
+  setStatus(
+    "thinking",
+    "thinking"
+  );
 
-    isThinking =
-      true;
+  try {
 
-    setStatus(
-      "thinking",
-      "thinking"
+    const formData =
+      new FormData();
+
+    formData.append(
+      "initData",
+      tg.initData
     );
 
-    try {
+    /*
+     * iOS commonly records mp4.
+     * Use a matching filename.
+     */
+    const extension =
+      mimeType.includes("mp4")
+        ? "m4a"
+        : mimeType.includes("mpeg")
+          ? "mp3"
+          : "webm";
 
-      const formData =
-        new FormData();
+    formData.append(
+      "audio",
+      audioBlob,
+      `voice.${extension}`
+    );
 
-      formData.append(
-        "initData",
-        tg.initData
+    const response =
+      await fetch(
+        RAPID_URL,
+        {
+          method: "POST",
+          body: formData
+        }
       );
 
-      /*
-       * iOS commonly records mp4.
-       * Use a matching filename.
-       */
-      const extension =
-        mimeType.includes("mp4")
-          ? "m4a"
-          : mimeType.includes("mpeg")
-            ? "mp3"
-            : "webm";
-
-      formData.append(
-        "audio",
-        audioBlob,
-        `voice.${extension}`
+    if (!response.ok) {
+      throw new Error(
+        "Voice upload failed"
       );
-
-      const response =
-        await fetch(
-          RAPID_URL,
-          {
-            method: "POST",
-            body: formData
-          }
-        );
-
-      if (!response.ok) {
-        throw new Error(
-          "Voice upload failed"
-        );
-      }
-
-      const data =
-        await response.json();
-
-      const recognizedText =
-        data?.text?.trim();
-
-      if (!recognizedText) {
-        throw new Error(
-          "Empty transcription"
-        );
-      }
-
-      /*
-       * The backend already receives:
-       * initData + audio.
-       *
-       * It returns the transcription.
-       * Then we send that exact text
-       * through the existing voice AI flow.
-       */
-
-      await sendVoiceToAI(
-        recognizedText
-      );
-
-    } catch (error) {
-
-      console.error(
-        "Voice processing error:",
-        error
-      );
-
-      isThinking =
-        false;
-
-      isSending =
-        false;
-
-      addMessage(
-        "bot",
-        t("voiceError")
-      );
-
-      setStatus(
-        "error",
-        "error"
-      );
-
-      resumeListening();
     }
+
+    const data =
+      await response.json();
+
+    const recognizedText =
+      data?.text?.trim();
+
+    if (!recognizedText) {
+      throw new Error(
+        "Empty transcription"
+      );
+    }
+
+    /*
+     * STT is finished.
+     *
+     * Release the thinking state before
+     * handing the recognized text to the
+     * existing voice AI flow.
+     */
+    isThinking = false;
+
+    /*
+     * sendVoiceToAI() owns the AI request
+     * and will set isSending/isThinking itself.
+     */
+    await sendVoiceToAI(
+      recognizedText
+    );
+
+  } catch (error) {
+
+    console.error(
+      "Voice processing error:",
+      error
+    );
+
+    isThinking = false;
+    isSending = false;
+
+    addMessage(
+      "bot",
+      t("voiceError")
+    );
+
+    setStatus(
+      "error",
+      "error"
+    );
+
+    resumeListening();
   }
+}
 
 
   /* =========================================================
