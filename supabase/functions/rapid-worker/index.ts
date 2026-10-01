@@ -8,6 +8,8 @@ import {
 
 import {
   getUserProfile,
+  updateOnboardingStep,
+  updateProfile,
 } from "./db/users.ts";
 
 import {
@@ -101,6 +103,20 @@ function arrayBufferToBase64(
   }
 
   return btoa(binary);
+}
+
+
+// =====================================================
+// HELPER: telegramUser → объект для createUser
+// =====================================================
+
+function telegramUserPayload(
+  telegramUser: any,
+) {
+  return {
+    username: telegramUser?.username || null,
+    first_name: telegramUser?.first_name || null,
+  };
 }
 
 
@@ -206,6 +222,7 @@ Deno.serve(
         const profile =
           await getUserProfile(
             telegramUser.id,
+            telegramUserPayload(telegramUser),
           );
 
 
@@ -348,7 +365,84 @@ Deno.serve(
       const profile =
         await getUserProfile(
           telegramUser.id,
+          telegramUserPayload(telegramUser),
         );
+
+
+      // =================================================
+      // ONBOARDING
+      // =================================================
+
+      if (
+        body?.onboarding &&
+        typeof body.onboarding === "object"
+      ) {
+        const step = String(body.onboarding.step || "");
+        const value = String(body.onboarding.value || "");
+
+        if (!step || !value) {
+          return jsonResponse(
+            {
+              ok: false,
+              error: "Invalid onboarding payload",
+            },
+            400,
+          );
+        }
+
+        const updated = await updateOnboardingStep(
+          telegramUser.id,
+          step,
+          value,
+        );
+
+        if (!updated) {
+          return jsonResponse(
+            {
+              ok: false,
+              error: "Failed to update onboarding",
+            },
+            500,
+          );
+        }
+
+        return jsonResponse({
+          ok: true,
+          profile: updated,
+        });
+      }
+
+
+      // =================================================
+      // PROFILE UPDATE
+      // =================================================
+
+      if (
+        body?.profile_update &&
+        typeof body.profile_update === "object"
+      ) {
+        const patch = body.profile_update;
+
+        const updated = await updateProfile(
+          telegramUser.id,
+          patch,
+        );
+
+        if (!updated) {
+          return jsonResponse(
+            {
+              ok: false,
+              error: "Failed to update profile",
+            },
+            500,
+          );
+        }
+
+        return jsonResponse({
+          ok: true,
+          profile: updated,
+        });
+      }
 
 
       // =================================================
@@ -513,15 +607,21 @@ Deno.serve(
 
 
       // =================================================
-      // AI RESPONSE
+      // AI RESPONSE + MISTAKE ANALYSIS (PARALLEL)
       // =================================================
 
-      const answer =
-        await askOpenRouter(
-          profile,
-          history,
-          isVoiceMessage,
-        );
+      const [answer, mistake] =
+        await Promise.all([
+          askOpenRouter(
+            profile,
+            history,
+            isVoiceMessage,
+          ),
+          analyzeStudentMessage(
+            message,
+            profile,
+          ),
+        ]);
 
 
       if (!answer) {
@@ -534,17 +634,6 @@ Deno.serve(
           500,
         );
       }
-
-
-      // =================================================
-      // ERROR ANALYSIS
-      // =================================================
-
-      const mistake =
-        await analyzeStudentMessage(
-          message,
-          profile,
-        );
 
 
       // =================================================
@@ -579,25 +668,30 @@ Deno.serve(
 
 
       // =================================================
-      // SAVE AI MESSAGE
+      // SAVE AI MESSAGE + PROGRESS (parallel, fire-and-forget)
       // =================================================
 
-      await saveMessage(
-        telegramUser.id,
-        conversationId,
-        "assistant",
-        finalAnswer,
-      );
+      const saveAssistantPromise =
+        saveMessage(
+          telegramUser.id,
+          conversationId,
+          "assistant",
+          finalAnswer,
+        ).catch((err) =>
+          console.error("Save assistant failed:", err)
+        );
 
+      const updateProgressPromise =
+        updateProgress(
+          String(telegramUser.id),
+          profile?.level || null,
+        ).catch((err) =>
+          console.error("Update progress failed:", err)
+        );
 
-      // =================================================
-      // UPDATE PROGRESS
-      // =================================================
-
-      await updateProgress(
-        String(telegramUser.id),
-        profile?.level || null,
-      );
+      // Не ждём завершения — они не нужны для ответа
+      void saveAssistantPromise;
+      void updateProgressPromise;
 
 
       // =================================================
