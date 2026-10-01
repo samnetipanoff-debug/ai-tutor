@@ -25,14 +25,65 @@ const STEPS = [
   "done",
 ];
 
-const LANGUAGE_EMOJIS = {
-  ru: "🇷🇺",
-  en: "🇬🇧",
-  de: "🇩🇪",
-  sr: "🇷🇸",
-  es: "🇪🇸",
-  fr: "🇫🇷",
+/* =========================================================
+   SVG FLAGS
+   ========================================================= */
+
+const LANGUAGE_FLAGS = {
+  ru: `<svg viewBox="0 0 24 16" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+    <rect width="24" height="16" fill="#fff"/>
+    <rect y="5.33" width="24" height="5.34" fill="#0039a6"/>
+    <rect y="10.67" width="24" height="5.33" fill="#d52b1e"/>
+  </svg>`,
+
+  en: `<svg viewBox="0 0 24 16" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+    <rect width="24" height="16" fill="#012169"/>
+    <path d="M0 0 L24 16 M24 0 L0 16" stroke="#fff" stroke-width="3"/>
+    <path d="M0 0 L24 16 M24 0 L0 16" stroke="#c8102e" stroke-width="1.6"/>
+    <path d="M12 0 V16 M0 8 H24" stroke="#fff" stroke-width="5"/>
+    <path d="M12 0 V16 M0 8 H24" stroke="#c8102e" stroke-width="3"/>
+  </svg>`,
+
+  de: `<svg viewBox="0 0 24 16" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+    <rect width="24" height="16" fill="#000"/>
+    <rect y="5.33" width="24" height="5.34" fill="#dd0000"/>
+    <rect y="10.67" width="24" height="5.33" fill="#ffce00"/>
+  </svg>`,
+
+  sr: `<svg viewBox="0 0 24 16" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+    <rect width="24" height="16" fill="#c6363c"/>
+    <rect y="5.33" width="24" height="5.34" fill="#0c4076"/>
+    <rect y="10.67" width="24" height="5.33" fill="#fff"/>
+  </svg>`,
+
+  es: `<svg viewBox="0 0 24 16" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+    <rect width="24" height="16" fill="#aa151b"/>
+    <rect y="4" width="24" height="8" fill="#f1bf00"/>
+  </svg>`,
+
+  fr: `<svg viewBox="0 0 24 16" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+    <rect width="8" height="16" fill="#0055a4"/>
+    <rect x="8" width="8" height="16" fill="#fff"/>
+    <rect x="16" width="8" height="16" fill="#ef4135"/>
+  </svg>`,
 };
+
+/* =========================================================
+   NATIVE LANGUAGE NAMES (одинаковые на любом интерфейсе)
+   ========================================================= */
+
+const LANGUAGE_NATIVE_NAMES = {
+  ru: "Русский",
+  en: "English",
+  de: "Deutsch",
+  sr: "Srpski",
+  es: "Español",
+  fr: "Français",
+};
+
+/* =========================================================
+   LEVELS + GOALS
+   ========================================================= */
 
 const LEVELS = ["a1", "a2", "b1", "b2", "c1"];
 const LEVEL_EMOJIS = {
@@ -53,7 +104,7 @@ const GOAL_EMOJIS = {
 };
 
 /* =========================================================
-   STATE
+   LOCAL STATE
    ========================================================= */
 
 let localStep = null;
@@ -67,7 +118,6 @@ let submitting = false;
 export function renderOnboarding() {
   const { profile } = getState();
 
-  // Текущий шаг — из профиля
   const step =
     localStep ||
     profile?.onboarding_step ||
@@ -83,12 +133,12 @@ export function renderOnboarding() {
 }
 
 /* =========================================================
-   PROGRESS
+   PROGRESS BAR
    ========================================================= */
 
 function renderProgress(currentStep) {
   const idx = STEPS.indexOf(currentStep);
-  const total = STEPS.length - 1; // не считая "done"
+  const total = STEPS.length - 1;
 
   let html = '<div class="onboarding-progress">';
 
@@ -116,7 +166,6 @@ function renderStep(step) {
 
   const config = getStepConfig(step);
   if (!config) {
-    // fallback
     return wrapper;
   }
 
@@ -164,7 +213,7 @@ function renderStep(step) {
     submitStep(step, config.getValue ? config.getValue() : localValue);
   });
 
-  // Авто-выбор уже сохранённого значения
+  // Pre-select already saved value
   const current = getCurrentValue(step);
   if (current) {
     const btn = body.querySelector(`.option[data-value="${current}"]`);
@@ -194,7 +243,6 @@ function selectOption(root, value, multi = false) {
     return;
   }
 
-  // Для будущего мульти-выбора (пока не используется)
   const el = root.querySelector(`.option[data-value="${value}"]`);
   if (el) el.classList.toggle("is-selected");
 
@@ -224,19 +272,16 @@ async function submitStep(step, value) {
 
     setState({ profile: result.profile });
 
-    // Обновляем локальный шаг
     localStep = result.profile.onboarding_step;
     localValue = null;
 
     if (result.profile.onboarding_step === "done") {
-      // Дадим секунду на анимацию
+      clearHeaderStatus();
       setTimeout(() => {
-        clearHeaderStatus();
         navigate("menu");
       }, 800);
     } else {
       clearHeaderStatus();
-      // Перерисовать
       const fresh = renderOnboarding();
       replaceScreen(fresh);
     }
@@ -354,8 +399,9 @@ function renderLanguageGrid(opts = {}) {
   let html = '<div class="onboarding-grid">';
 
   for (const code of languages) {
-    const emoji = LANGUAGE_EMOJIS[code] || "🌐";
+    const flagSvg = LANGUAGE_FLAGS[code] || "";
     const label = t(`languages.${code}`, null, getInterfaceLanguage());
+    const native = LANGUAGE_NATIVE_NAMES[code] || "";
 
     html += `
       <button
@@ -364,9 +410,14 @@ function renderLanguageGrid(opts = {}) {
         data-value="${code}"
       >
         <div class="option-left">
-          <span class="option-emoji">${emoji}</span>
+          <span class="option-flag">${flagSvg}</span>
           <div class="option-text">
             <span class="option-title">${label}</span>
+            ${
+              native && native !== label
+                ? `<span class="option-subtitle">${native}</span>`
+                : ""
+            }
           </div>
         </div>
         <span class="option-check">
@@ -472,7 +523,7 @@ function detectInterfaceLanguage() {
 }
 
 /* =========================================================
-   DOM SWAP HELPER
+   DOM SWAP
    ========================================================= */
 
 function replaceScreen(newNode) {
