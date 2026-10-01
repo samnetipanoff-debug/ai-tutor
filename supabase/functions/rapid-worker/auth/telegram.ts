@@ -15,6 +15,8 @@ export async function verifyTelegramWebAppData(
     return null;
   }
 
+  // Telegram добавляет "signature" начиная с 2024 года.
+  // Оба поля — hash и signature — исключаются из dataCheckString.
   params.delete("hash");
   params.delete("signature");
 
@@ -66,6 +68,13 @@ export async function verifyTelegramWebAppData(
     .join("");
 
   if (calculatedHash !== receivedHash) {
+    return null;
+  }
+
+  // Проверка свежести initData (не старше 24 часов)
+  const authDate = Number(params.get("auth_date") || 0);
+
+  if (!authDate || Date.now() / 1000 - authDate > 86400) {
     return null;
   }
 
