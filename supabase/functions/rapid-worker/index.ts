@@ -1,10 +1,6 @@
-import {
-  CORS_HEADERS,
-} from "./config.ts";
+import { CORS_HEADERS } from "./config.ts";
 
-import {
-  verifyTelegramWebAppData,
-} from "./auth/telegram.ts";
+import { verifyTelegramWebAppData } from "./auth/telegram.ts";
 
 import {
   getUserProfile,
@@ -12,721 +8,510 @@ import {
   updateProfile,
 } from "./db/users.ts";
 
-import {
-  getOrCreateConversation,
-} from "./db/conversations.ts";
+import { getOrCreateConversation } from "./db/conversations.ts";
 
 import {
   saveMessage,
   getChatHistory,
 } from "./db/messages.ts";
 
-import {
-  updateProgress,
-} from "./db/progress.ts";
+import { updateProgress } from "./db/progress.ts";
+import { getProgress } from "./db/progress-read.ts";
 
-import {
-  askOpenRouter,
-} from "./ai/tutor.ts";
+import { askOpenRouter } from "./ai/tutor.ts";
+import { analyzeStudentMessage } from "./ai/mistake-analyzer.ts";
 
-import {
-  analyzeStudentMessage,
-} from "./ai/mistake-analyzer.ts";
+import { transcribeAudio } from "./voice/whisper.ts";
+import { generateSpeech } from "./voice/tts.ts";
 
-import {
-  transcribeAudio,
-} from "./voice/whisper.ts";
-
-import {
-  generateSpeech,
-} from "./voice/tts.ts";
-
-import {
-  jsonResponse,
-} from "./utils/json.ts";
+import { jsonResponse } from "./utils/json.ts";
 
 
-// =====================================================
-// BUILD CORRECTION
-// =====================================================
-
-function buildCorrection(
-  mistake: any,
-  interfaceLanguage: string,
-) {
-  const labels: Record<string, string> = {
-    ru: "Небольшая поправка",
-    en: "Small correction",
-    sr: "Mala ispravka",
-    es: "Pequeña corrección",
-    de: "Kleine Korrektur",
-    fr: "Petite correction",
-  };
-
-  const label =
-    labels[interfaceLanguage] ||
-    labels.en;
-
-  return `${label}:\n“${mistake.corrected_text}”\n\n${mistake.explanation}`;
-}
-
-
-// =====================================================
-// ARRAY BUFFER → BASE64
-// =====================================================
-
-function arrayBufferToBase64(
-  buffer: ArrayBuffer,
-) {
-  const bytes =
-    new Uint8Array(buffer);
-
-  let binary = "";
-
-  const chunkSize = 8192;
-
-  for (
-    let i = 0;
-    i < bytes.length;
-    i += chunkSize
-  ) {
-    const chunk =
-      bytes.subarray(
-        i,
-        i + chunkSize,
-      );
-
-    binary +=
-      String.fromCharCode(
-        ...chunk,
-      );
-  }
-
-  return btoa(binary);
-}
-
-
-// =====================================================
-// HELPER: telegramUser → объект для createUser
-// =====================================================
-
-function telegramUserPayload(
-  telegramUser: any,
-) {
-  return {
-    username: telegramUser?.username || null,
-    first_name: telegramUser?.first_name || null,
-  };
-}
-
-
-// =====================================================
-// MAIN
-// =====================================================
-
-Deno.serve(
-  async (req) => {
-
-    // =================================================
+Deno.serve(async (req) => {
+  try {
+    // --------------------------------------------------
     // CORS
-    // =================================================
+    // --------------------------------------------------
 
-    if (
-      req.method === "OPTIONS"
-    ) {
-      return new Response(
-        null,
-        {
-          status: 204,
-          headers: CORS_HEADERS,
-        },
-      );
-    }
-
-
-    // =================================================
-    // HEALTH CHECK
-    // =================================================
-
-    if (
-      req.method !== "POST"
-    ) {
-      return jsonResponse({
-        ok: true,
-        message:
-          "AI Tutor backend is running",
+    if (req.method === "OPTIONS") {
+      return new Response(null, {
+        status: 204,
+        headers: CORS_HEADERS,
       });
     }
 
+    // --------------------------------------------------
+    // Health check
+    // --------------------------------------------------
 
-    try {
-
-      const contentType =
-        req.headers.get(
-          "content-type",
-        ) || "";
-
-
-      // =================================================
-      // AUDIO → WHISPER
-      // =================================================
-
-      if (
-        contentType.includes(
-          "multipart/form-data",
-        )
-      ) {
-
-        const formData =
-          await req.formData();
-
-        const initData =
-          formData.get(
-            "initData",
-          );
-
-        const audio =
-          formData.get(
-            "audio",
-          );
-
-
-        // -----------------------------------------------
-        // TELEGRAM AUTH
-        // -----------------------------------------------
-
-        const telegramUser =
-          await verifyTelegramWebAppData(
-            String(
-              initData || "",
-            ),
-          );
-
-
-        if (!telegramUser) {
-          return jsonResponse(
-            {
-              ok: false,
-              error:
-                "Invalid Telegram initData",
-            },
-            401,
-          );
-        }
-
-
-        // -----------------------------------------------
-        // PROFILE
-        // -----------------------------------------------
-
-        const profile =
-          await getUserProfile(
-            telegramUser.id,
-            telegramUserPayload(telegramUser),
-          );
-
-
-        if (!profile?.learning_language) {
-          return jsonResponse(
-            {
-              ok: false,
-              error:
-                "Learning language is not configured",
-            },
-            400,
-          );
-        }
-
-
-        // -----------------------------------------------
-        // AUDIO CHECK
-        // -----------------------------------------------
-
-        if (
-          !audio ||
-          !(audio instanceof File)
-        ) {
-          return jsonResponse(
-            {
-              ok: false,
-              error:
-                "Audio file is missing",
-            },
-            400,
-          );
-        }
-
-
-        console.log(
-          "AUDIO RECEIVED:",
-          audio.name,
-          audio.type,
-          audio.size,
-        );
-
-
-        console.log(
-          "LEARNING LANGUAGE:",
-          profile.learning_language,
-        );
-
-
-        // -----------------------------------------------
-        // WHISPER
-        // -----------------------------------------------
-
-        const transcription =
-          await transcribeAudio(
-            audio,
-            profile.learning_language,
-          );
-
-
-        if (!transcription) {
-          return jsonResponse(
-            {
-              ok: false,
-              error:
-                "Speech recognition failed",
-            },
-            500,
-          );
-        }
-
-
-        console.log(
-          "TRANSCRIPTION:",
-          transcription,
-        );
-
-
-        return jsonResponse({
+    if (req.method !== "POST") {
+      return jsonResponse(
+        {
           ok: true,
-          text:
-            transcription,
-        });
-      }
+          service: "rapid-worker",
+        },
+        200,
+        CORS_HEADERS,
+      );
+    }
 
+    // --------------------------------------------------
+    // Multipart: voice upload
+    // --------------------------------------------------
 
-      // =================================================
-      // JSON REQUEST
-      // =================================================
+    const contentType =
+      req.headers.get("content-type") || "";
 
-      const body =
-        await req.json();
+    if (
+      contentType.includes(
+        "multipart/form-data",
+      )
+    ) {
+      const formData = await req.formData();
 
       const initData =
-        body?.initData;
+        String(
+          formData.get("initData") || "",
+        );
 
-      const message =
-        typeof body?.message === "string"
-          ? body.message.trim()
-          : "";
+      const audio =
+        formData.get("audio");
 
-      const loadHistory =
-        body?.load_history;
+      if (!initData) {
+        return jsonResponse(
+          {
+            ok: false,
+            error: "Missing initData",
+          },
+          400,
+          CORS_HEADERS,
+        );
+      }
 
-      const textToSpeech =
-        body?.tts;
-
-      const ttsText =
-        body?.text;
-
-      const isVoiceMessage =
-        body?.voice === true;
-
-
-      // =================================================
-      // TELEGRAM AUTH
-      // =================================================
-
+      // Telegram authentication
       const telegramUser =
         await verifyTelegramWebAppData(
           initData,
         );
 
-
       if (!telegramUser) {
         return jsonResponse(
           {
             ok: false,
-            error:
-              "Invalid Telegram initData",
+            error: "Invalid Telegram initData",
           },
           401,
+          CORS_HEADERS,
         );
       }
-
-
-      // =================================================
-      // PROFILE
-      // =================================================
 
       const profile =
         await getUserProfile(
           telegramUser.id,
-          telegramUserPayload(telegramUser),
+          telegramUser,
         );
 
-
-      // =================================================
-      // ONBOARDING
-      // =================================================
-
       if (
-        body?.onboarding &&
-        typeof body.onboarding === "object"
+        !profile?.learning_language
       ) {
-        const step = String(body.onboarding.step || "");
-        const value = String(body.onboarding.value || "");
+        return jsonResponse(
+          {
+            ok: false,
+            error:
+              "Learning language is not configured",
+          },
+          400,
+          CORS_HEADERS,
+        );
+      }
 
-        if (!step || !value) {
-          return jsonResponse(
-            {
-              ok: false,
-              error: "Invalid onboarding payload",
-            },
-            400,
-          );
-        }
+      if (!(audio instanceof File)) {
+        return jsonResponse(
+          {
+            ok: false,
+            error: "Audio file is missing",
+          },
+          400,
+          CORS_HEADERS,
+        );
+      }
 
-        const updated = await updateOnboardingStep(
+      const transcription =
+        await transcribeAudio(
+          audio,
+          profile.learning_language,
+        );
+
+      return jsonResponse(
+        {
+          ok: true,
+          text: transcription,
+        },
+        200,
+        CORS_HEADERS,
+      );
+    }
+
+    // --------------------------------------------------
+    // JSON body
+    // --------------------------------------------------
+
+    const body = await req.json();
+
+    const {
+      initData,
+      message,
+      load_history,
+      tts,
+      text,
+      voice,
+      progress,
+      onboarding,
+      profile_update,
+    } = body;
+
+    // --------------------------------------------------
+    // Telegram authentication
+    // --------------------------------------------------
+
+    if (!initData) {
+      return jsonResponse(
+        {
+          ok: false,
+          error: "Missing initData",
+        },
+        400,
+        CORS_HEADERS,
+      );
+    }
+
+    const telegramUser =
+      await verifyTelegramWebAppData(
+        initData,
+      );
+
+    if (!telegramUser) {
+      return jsonResponse(
+        {
+          ok: false,
+          error: "Invalid Telegram initData",
+        },
+        401,
+        CORS_HEADERS,
+      );
+    }
+
+    // --------------------------------------------------
+    // User profile
+    // --------------------------------------------------
+
+    const profile =
+      await getUserProfile(
+        telegramUser.id,
+        telegramUser,
+      );
+
+    // --------------------------------------------------
+    // Progress
+    // --------------------------------------------------
+
+    if (progress) {
+      const result =
+        await getProgress(
+          String(telegramUser.id),
+        );
+
+      return jsonResponse(
+        {
+          ok: true,
+          ...result,
+        },
+        200,
+        CORS_HEADERS,
+      );
+    }
+
+    // --------------------------------------------------
+    // Onboarding
+    // --------------------------------------------------
+
+    if (onboarding) {
+      const {
+        step,
+        value,
+      } = onboarding;
+
+      const updatedProfile =
+        await updateOnboardingStep(
           telegramUser.id,
           step,
           value,
         );
 
-        if (!updated) {
-          return jsonResponse(
-            {
-              ok: false,
-              error: "Failed to update onboarding",
-            },
-            500,
-          );
-        }
-
-        return jsonResponse({
+      return jsonResponse(
+        {
           ok: true,
-          profile: updated,
-        });
-      }
+          profile: updatedProfile,
+        },
+        200,
+        CORS_HEADERS,
+      );
+    }
 
+    // --------------------------------------------------
+    // Profile update
+    // --------------------------------------------------
 
-      // =================================================
-      // PROFILE UPDATE
-      // =================================================
-
-      if (
-        body?.profile_update &&
-        typeof body.profile_update === "object"
-      ) {
-        const patch = body.profile_update;
-
-        const updated = await updateProfile(
+    if (profile_update) {
+      const updatedProfile =
+        await updateProfile(
           telegramUser.id,
-          patch,
+          profile_update,
         );
 
-        if (!updated) {
-          return jsonResponse(
-            {
-              ok: false,
-              error: "Failed to update profile",
-            },
-            500,
-          );
-        }
-
-        return jsonResponse({
+      return jsonResponse(
+        {
           ok: true,
-          profile: updated,
-        });
+          profile: updatedProfile,
+        },
+        200,
+        CORS_HEADERS,
+      );
+    }
+
+    // --------------------------------------------------
+    // TTS
+    // --------------------------------------------------
+
+    if (tts) {
+      const ttsText =
+        text ||
+        body.text ||
+        "";
+
+      if (!ttsText) {
+        return jsonResponse(
+          {
+            ok: false,
+            error: "Missing text for TTS",
+          },
+          400,
+          CORS_HEADERS,
+        );
       }
 
+      const audioBuffer =
+        await generateSpeech(
+          ttsText,
+          profile?.interface_language ||
+            "en",
+        );
 
-      // =================================================
-      // TTS
-      // =================================================
+      const base64 =
+        Uint8Array.from(
+          new Uint8Array(audioBuffer),
+        );
 
-      if (
-        textToSpeech === true &&
-        ttsText
+      let binary = "";
+
+      for (
+        let i = 0;
+        i < base64.length;
+        i++
       ) {
-
-        const speechAudio =
-          await generateSpeech(
-            ttsText,
-            profile?.interface_language ||
-              "en",
-          );
-
-
-        if (!speechAudio) {
-          return jsonResponse(
-            {
-              ok: false,
-              error:
-                "TTS generation failed",
-            },
-            500,
-          );
-        }
-
-
-        return jsonResponse({
-          ok: true,
-
-          audio:
-            arrayBufferToBase64(
-              speechAudio,
-            ),
-
-          format: "mp3",
-        });
+        binary += String.fromCharCode(
+          base64[i],
+        );
       }
 
+      const encoded =
+        btoa(binary);
 
-      // =================================================
-      // PROFILE / HISTORY
-      // =================================================
-
-      if (!message) {
-
-        if (loadHistory) {
-
-          const conversation =
-            await getOrCreateConversation(
-              telegramUser.id,
-            );
-
-
-          if (!conversation) {
-            return jsonResponse(
-              {
-                ok: false,
-                error:
-                  "Conversation not found",
-              },
-              500,
-            );
-          }
-
-
-          const history =
-            await getChatHistory(
-              telegramUser.id,
-              conversation.id,
-            );
-
-
-          return jsonResponse({
-            ok: true,
-            user:
-              telegramUser,
-            profile:
-              profile,
-            conversation_id:
-              conversation.id,
-            history:
-              history,
-          });
-        }
-
-
-        return jsonResponse({
+      return jsonResponse(
+        {
           ok: true,
-          user:
-            telegramUser,
-          profile:
-            profile,
-        });
-      }
+          audio: encoded,
+          mime_type: "audio/mpeg",
+        },
+        200,
+        CORS_HEADERS,
+      );
+    }
 
+    // --------------------------------------------------
+    // Load chat history
+    // --------------------------------------------------
 
-      // =================================================
-      // CONVERSATION
-      // =================================================
-
+    if (
+      !message &&
+      load_history
+    ) {
       const conversation =
         await getOrCreateConversation(
           telegramUser.id,
         );
 
-
-      if (!conversation) {
-        return jsonResponse(
-          {
-            ok: false,
-            error:
-              "Conversation creation failed",
-          },
-          500,
-        );
-      }
-
-
-      const conversationId =
-        conversation.id;
-
-
-      // =================================================
-      // SAVE USER MESSAGE
-      // =================================================
-
-      const savedUserMessage =
-        await saveMessage(
-          telegramUser.id,
-          conversationId,
-          "user",
-          message,
-        );
-
-
-      if (!savedUserMessage) {
-        return jsonResponse(
-          {
-            ok: false,
-            error:
-              "Failed to save user message",
-          },
-          500,
-        );
-      }
-
-
-      // =================================================
-      // HISTORY
-      // =================================================
-
       const history =
         await getChatHistory(
           telegramUser.id,
-          conversationId,
+          conversation.id,
         );
-
-
-      // =================================================
-      // AI RESPONSE + MISTAKE ANALYSIS (PARALLEL)
-      // =================================================
-
-      const [answer, mistake] =
-        await Promise.all([
-          askOpenRouter(
-            profile,
-            history,
-            isVoiceMessage,
-          ),
-          analyzeStudentMessage(
-            message,
-            profile,
-          ),
-        ]);
-
-
-      if (!answer) {
-        return jsonResponse(
-          {
-            ok: false,
-            error:
-              "AI response failed",
-          },
-          500,
-        );
-      }
-
-
-      // =================================================
-      // FINAL ANSWER
-      // =================================================
-
-      let finalAnswer =
-        answer;
-
-
-      if (
-        mistake?.has_mistake === true
-      ) {
-
-        const correction =
-          buildCorrection(
-            mistake,
-            profile?.interface_language ||
-              "en",
-          );
-
-
-        finalAnswer =
-          `${correction}\n\n${answer}`;
-
-
-        console.log(
-          "STUDENT MISTAKE:",
-          mistake,
-        );
-      }
-
-
-      // =================================================
-      // SAVE AI MESSAGE + PROGRESS (parallel, fire-and-forget)
-      // =================================================
-
-      const saveAssistantPromise =
-        saveMessage(
-          telegramUser.id,
-          conversationId,
-          "assistant",
-          finalAnswer,
-        ).catch((err) =>
-          console.error("Save assistant failed:", err)
-        );
-
-      const updateProgressPromise =
-        updateProgress(
-          String(telegramUser.id),
-          profile?.level || null,
-        ).catch((err) =>
-          console.error("Update progress failed:", err)
-        );
-
-      // Не ждём завершения — они не нужны для ответа
-      void saveAssistantPromise;
-      void updateProgressPromise;
-
-
-      // =================================================
-      // RESPONSE
-      // =================================================
-
-      return jsonResponse({
-        ok: true,
-        user:
-          telegramUser,
-        profile:
-          profile,
-        conversation_id:
-          conversationId,
-        answer:
-          finalAnswer,
-      });
-
-
-    } catch (error) {
-
-      console.error(
-        "BACKEND ERROR:",
-        error,
-      );
-
 
       return jsonResponse(
         {
-          ok: false,
-          error:
-            "Invalid request",
+          ok: true,
+          user: telegramUser,
+          profile,
+          conversation_id:
+            conversation.id,
+          history,
         },
-        400,
+        200,
+        CORS_HEADERS,
       );
     }
-  },
-);
+
+    // --------------------------------------------------
+    // Profile only
+    // --------------------------------------------------
+
+    if (!message) {
+      return jsonResponse(
+        {
+          ok: true,
+          user: telegramUser,
+          profile,
+        },
+        200,
+        CORS_HEADERS,
+      );
+    }
+
+    // --------------------------------------------------
+    // Conversation
+    // --------------------------------------------------
+
+    const conversation =
+      await getOrCreateConversation(
+        telegramUser.id,
+      );
+
+    // Save user message
+    await saveMessage(
+      telegramUser.id,
+      conversation.id,
+      "user",
+      message,
+    );
+
+    // Load recent history
+    const history =
+      await getChatHistory(
+        telegramUser.id,
+        conversation.id,
+      );
+
+    // --------------------------------------------------
+    // AI response + mistake analysis
+    // --------------------------------------------------
+
+    const isVoiceMessage =
+      voice === true;
+
+    const [
+      answer,
+      mistake,
+    ] = await Promise.all([
+      askOpenRouter(
+        profile,
+        history,
+        isVoiceMessage,
+      ),
+
+      analyzeStudentMessage(
+        message,
+        profile,
+      ),
+    ]);
+
+    // --------------------------------------------------
+    // Correction
+    // --------------------------------------------------
+
+    let finalAnswer =
+      answer;
+
+    if (
+      mistake?.has_mistake
+    ) {
+      const correction =
+        mistake.explanation
+          ? `${mistake.corrected_text}\n\n${mistake.explanation}`
+          : mistake.corrected_text;
+
+      finalAnswer =
+        `${answer}\n\n${correction}`;
+    }
+
+    // --------------------------------------------------
+    // Save assistant message
+    // --------------------------------------------------
+
+    await saveMessage(
+      telegramUser.id,
+      conversation.id,
+      "assistant",
+      finalAnswer,
+    );
+
+    // --------------------------------------------------
+    // Update progress
+    // --------------------------------------------------
+
+    try {
+      await updateProgress(
+        String(telegramUser.id),
+        profile?.level || null,
+      );
+    } catch (error) {
+      console.error(
+        "Progress update failed:",
+        error,
+      );
+    }
+
+    // --------------------------------------------------
+    // Response
+    // --------------------------------------------------
+
+    return jsonResponse(
+      {
+        ok: true,
+        user: telegramUser,
+        profile,
+        conversation_id:
+          conversation.id,
+        answer: finalAnswer,
+      },
+      200,
+      CORS_HEADERS,
+    );
+  } catch (error) {
+    console.error(
+      "rapid-worker error:",
+      error,
+    );
+
+    return jsonResponse(
+      {
+        ok: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Internal server error",
+      },
+      500,
+      CORS_HEADERS,
+    );
+  }
+});
