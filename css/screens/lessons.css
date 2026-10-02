@@ -1,22 +1,14 @@
-/* =========================================================
-   LESSONS — TOPIC LIBRARY
-   ========================================================= */
-
-.lessons { display:flex; flex-direction:column; height:100%; min-height:0; }
-.lessons-scroll { flex:1 1 auto; min-height:0; overflow-y:auto; padding:24px 20px 30px; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; }
-.lessons-section-title { margin:0 0 12px; font-size:11px; font-weight:750; color:var(--c-text-4); text-transform:uppercase; letter-spacing:.9px; }
-.lessons-list { display:grid; grid-template-columns:1fr 1fr; gap:11px; }
-
-.lessons-item { position:relative; display:flex; flex-direction:column; align-items:flex-start; justify-content:space-between; gap:18px; min-height:138px; padding:17px; background:linear-gradient(145deg,rgba(255,255,255,.045),rgba(255,255,255,.01)),var(--c-surface); border:1px solid rgba(255,255,255,.10); border-radius:21px; box-shadow:0 7px 22px rgba(0,0,0,.16); cursor:pointer; text-align:left; width:100%; transition:transform var(--t-fast),border-color var(--t-fast),background var(--t-fast); }
-.lessons-item:hover { border-color:rgba(139,226,139,.22); background:var(--c-surface-2); }
-.lessons-item:active { transform:scale(.975); }
-.lessons-item.is-active { grid-column:1/-1; min-height:108px; flex-direction:row; align-items:center; gap:14px; background:radial-gradient(circle at 100% 100%,rgba(139,226,139,.12),transparent 45%),var(--c-surface); border-color:rgba(139,226,139,.32); }
-
-.lessons-item-emoji { width:44px; height:44px; flex:0 0 44px; display:flex; align-items:center; justify-content:center; border-radius:15px; background:var(--c-primary-soft); font-size:23px; }
-.lessons-item-body { flex:1; min-width:0; }
-.lessons-item-title { font-size:15px; font-weight:680; color:var(--c-text); line-height:1.25; margin-bottom:5px; }
-.lessons-item-subtitle { font-size:12.5px; color:var(--c-text-3); line-height:1.35; }
-.lessons-item-arrow { width:17px; height:17px; color:var(--c-text-4); margin-top:auto; }
-.lessons-item.is-active .lessons-item-arrow { margin-top:0; }
-.lessons-start { margin-top:26px; }
-@media (max-width:360px){.lessons-list{gap:9px}.lessons-item{min-height:128px;padding:15px}}
+/* LESSONS — visual library */
+.lessons{height:100%;display:flex;flex-direction:column}
+.lessons-scroll{flex:1;overflow:auto;padding:28px 20px 34px}
+.lessons-section-title{font-size:11px!important;letter-spacing:1.2px!important;text-transform:uppercase;margin:0 0 13px!important;color:var(--c-text-4)!important}
+.lessons-list{grid-template-columns:1fr 1fr;gap:12px}
+.lessons-item{min-height:154px!important;padding:18px!important;border-radius:24px!important;background:linear-gradient(145deg,rgba(255,255,255,.055),rgba(255,255,255,.018))!important;border:1px solid rgba(255,255,255,.10)!important;box-shadow:0 12px 30px rgba(0,0,0,.16)!important}
+.lessons-item:nth-child(3n){background:linear-gradient(145deg,rgba(139,226,139,.075),rgba(255,255,255,.015))!important}
+.lessons-item-emoji{width:50px!important;height:50px!important;border-radius:17px!important;font-size:25px!important;background:rgba(139,226,139,.09)!important}
+.lessons-item-title{font-size:17px!important;font-weight:680!important}
+.lessons-item-subtitle{font-size:12px!important;color:var(--c-text-4)!important}
+.lessons-item-arrow{position:absolute!important;right:17px!important;bottom:17px!important}
+.lessons-item.is-active{margin-bottom:8px!important;min-height:118px!important;padding:18px!important}
+.lessons-start{margin-top:30px!important}
+@media(max-width:380px){.lessons-list{grid-template-columns:1fr}.lessons-item{min-height:128px!important}}
