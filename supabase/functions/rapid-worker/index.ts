@@ -20,6 +20,8 @@ import { getProgress } from "./db/progress-read.ts";
 
 import { askOpenRouter } from "./ai/tutor.ts";
 import { analyzeStudentMessage } from "./ai/mistake-analyzer.ts";
+import { translateTutorAnswer } from "./ai/translate.ts";
+import { uploadVoice } from "./storage.ts";
 
 import { transcribeAudio } from "./voice/whisper.ts";
 import { generateSpeech } from "./voice/tts.ts";
@@ -56,161 +58,112 @@ Deno.serve(async (req) => {
     }
 
     // --------------------------------------------------
-    // Multipart: voice upload
+    // Multipart: explicit voice message
     // --------------------------------------------------
 
-    const contentType =
-      req.headers.get("content-type") || "";
-
-    if (
-      contentType.includes(
-        "multipart/form-data",
-      )
-    ) {
+    if (contentType.includes("multipart/form-data")) {
       const formData = await req.formData();
+      const initData = String(formData.get("initData") || "");
+      const audio = formData.get("audio");
 
-      const initData =
-        String(
-          formData.get("initData") || "",
-        );
+      if (!initData) return jsonResponse({ ok: false, error: "Missing initData" }, 400, CORS_HEADERS);
 
-      const audio =
-        formData.get("audio");
+      const telegramUser = await verifyTelegramWebAppData(initData);
+      if (!telegramUser) return jsonResponse({ ok: false, error: "Invalid Telegram initData" }, 401, CORS_HEADERS);
 
-      if (!initData) {
-        return jsonResponse(
-          {
-            ok: false,
-            error: "Missing initData",
-          },
-          400,
-          CORS_HEADERS,
-        );
-      }
-
-      // Telegram authentication
-      const telegramUser =
-        await verifyTelegramWebAppData(
-          initData,
-        );
-
-      if (!telegramUser) {
-        return jsonResponse(
-          {
-            ok: false,
-            error: "Invalid Telegram initData",
-          },
-          401,
-          CORS_HEADERS,
-        );
-      }
-
-      const profile =
-        await getUserProfile(
-          telegramUser.id,
-          telegramUser,
-        );
-
-      if (
-        !profile?.learning_language
-      ) {
-        return jsonResponse(
-          {
-            ok: false,
-            error:
-              "Learning language is not configured",
-          },
-          400,
-          CORS_HEADERS,
-        );
+      const profile = await getUserProfile(telegramUser.id, telegramUser);
+      if (!profile?.learning_language) {
+        return jsonResponse({ ok: false, error: "Learning language is not configured" }, 400, CORS_HEADERS);
       }
 
       if (!(audio instanceof File)) {
-        return jsonResponse(
-          {
-            ok: false,
-            error: "Audio file is missing",
-          },
-          400,
-          CORS_HEADERS,
-        );
+        return jsonResponse({ ok: false, error: "Audio file is missing" }, 400, CORS_HEADERS);
       }
 
-      const transcription =
-        await transcribeAudio(
-          audio,
-          profile.learning_language,
-        );
+      const mode = String(formData.get("mode") || "free");
+      const lessonTopic = String(formData.get("lesson_topic") || "");
+      const retryingCorrection = String(formData.get("retrying_correction") || "") === "true";
+      const mimeType = audio.type || "audio/webm";
+      const audioBytes = await audio.arrayBuffer();
+      const conversation = await getOrCreateConversation(telegramUser.id);
 
+      const userAudioPath = `users/${telegramUser.id}/${crypto.randomUUID()}.webm`;
+      await uploadVoice(audioBytes, mimeType, userAudioPath);
+
+      const transcription = await transcribeAudio(audio, profile.learning_language);
       if (!transcription) {
-        return jsonResponse(
-          { ok: false, error: "Speech could not be transcribed" },
-          422,
-          CORS_HEADERS,
-        );
+        return jsonResponse({ ok: false, error: "Speech could not be transcribed" }, 422, CORS_HEADERS);
       }
 
-      // Voice uses the same single conversation pipeline as text.
-      const conversation =
-        await getOrCreateConversation(telegramUser.id);
+      const userMessage = JSON.stringify({
+        type: "voice",
+        audio_path: userAudioPath,
+        transcript: transcription,
+      });
 
-      await saveMessage(
-        telegramUser.id,
-        conversation.id,
-        "user",
-        transcription,
-      );
+      await saveMessage(telegramUser.id, conversation.id, "user", userMessage);
 
-      const history =
-        await getChatHistory(telegramUser.id, conversation.id);
+      const history = await getChatHistory(telegramUser.id, conversation.id);
 
       const [answer, mistake] = await Promise.all([
-        askOpenRouter(profile, history, true),
+        askOpenRouter(profile, history, true, mode, lessonTopic, retryingCorrection),
         analyzeStudentMessage(transcription, profile),
       ]);
 
-      let finalAnswer = answer;
+      let spokenAnswer = answer;
       let correction = null;
 
-      if (mistake?.has_mistake) {
+      if (mistake?.has_mistake && !retryingCorrection) {
         correction = {
           original: transcription,
           corrected: mistake.corrected_text || "",
           explanation: mistake.explanation || "",
         };
-
-        const correctionText = mistake.explanation
-          ? `${mistake.corrected_text}\n\n${mistake.explanation}`
-          : mistake.corrected_text;
-
-        finalAnswer = `${answer}\n\n${correctionText}`;
+        spokenAnswer = mistake.corrected_text
+          ? `Please repeat it correctly: ${mistake.corrected_text}`
+          : answer;
       }
-      await saveMessage(
-        telegramUser.id,
-        conversation.id,
-        "assistant",
-        finalAnswer,
+
+      const translation = await translateTutorAnswer(
+        spokenAnswer,
+        profile.learning_language,
+        profile.interface_language || "en",
       );
 
+      const speech = await generateSpeech(spokenAnswer, profile.learning_language);
+      const botAudioPath = `users/${telegramUser.id}/${crypto.randomUUID()}.mp3`;
+      await uploadVoice(speech, "audio/mpeg", botAudioPath);
+
+      const assistantMessage = JSON.stringify({
+        type: "voice",
+        audio_path: botAudioPath,
+        text: spokenAnswer,
+        translation,
+        correction,
+        requires_repeat: Boolean(correction),
+      });
+
+      await saveMessage(telegramUser.id, conversation.id, "assistant", assistantMessage);
+
       try {
-        await updateProgress(
-          String(telegramUser.id),
-          profile?.level || null,
-        );
+        await updateProgress(String(telegramUser.id), profile?.level || null);
       } catch (error) {
         console.error("Progress update failed:", error);
       }
 
-      return jsonResponse(
-        {
-          ok: true,
-          text: transcription,
-          answer,
-          correction,
-        },
-        200,
-        CORS_HEADERS,
-      );
+      const userAudioUrl = await (await import("./storage.ts")).signVoice(userAudioPath);
+      const botAudioUrl = await (await import("./storage.ts")).signVoice(botAudioPath);
+
+      return jsonResponse({
+        ok: true,
+        text: transcription,
+        answer: spokenAnswer,
+        translation,
+        correction,
+        requires_repeat: Boolean(correction),
+        user_voice: { audio_url: userAudioUrl, transcript: transcription },
+        bot_voice: { audio_url: botAudioUrl, text: spokenAnswer, translation },
+      }, 200, CORS_HEADERS);
     }
 
     // --------------------------------------------------
