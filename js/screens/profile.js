@@ -46,41 +46,15 @@ export function renderProfile() {
       </div>
 
       <div class="profile-section">
-        <div class="profile-section-title">
-          ${t("profile.interface_language", null, lang)}
-        </div>
-        ${renderRow(
-          "interface_language",
-          "settings",
-          t("profile.interface_language", null, lang),
-          labelForLanguage(profile?.interface_language, lang),
-        )}
-
-        <div class="profile-section-title" style="margin-top: var(--sp-4);">
-          ${t("profile.native_language", null, lang)}
-        </div>
-        ${renderRow(
-          "native_language",
-          "user",
-          t("profile.native_language", null, lang),
-          labelForLanguage(profile?.native_language, lang),
-        )}
-
-        <div class="profile-section-title" style="margin-top: var(--sp-4);">
-          ${t("profile.learning_language", null, lang)}
-        </div>
-        ${renderRow(
-          "learning_language",
-          "book",
-          t("profile.learning_language", null, lang),
-          labelForLanguage(profile?.learning_language, lang),
-        )}
+        ${renderRow("interface_language", "settings", t("profile.interface_language", null, lang), labelForLanguage(profile?.interface_language, lang))}
+        ${renderRow("native_language", "user", t("profile.native_language", null, lang), labelForLanguage(profile?.native_language, lang))}
+        ${renderRow("learning_language", "book", t("profile.learning_language", null, lang), labelForLanguage(profile?.learning_language, lang))}
       </div>
 
       <div class="profile-section">
-        <div class="profile-section-title">
-          ${t("profile.level", null, lang)}
-        </div>
+        ${renderRow("level", "chart", t("profile.level", null, lang), labelForLevel(profile?.level, lang))}
+        ${renderRow("goal", "trophy", t("profile.goal", null, lang), labelForGoal(profile?.goal, lang))}
+      </div>
         ${renderRow(
           "level",
           "chart",
@@ -134,7 +108,8 @@ export function renderProfile() {
 function renderRow(field, icon, label, value) {
   return `
     <button class="profile-row" type="button" data-field="${field}">
-      <div style="flex: 1; min-width: 0;">
+      <span class="profile-row-icon icon" data-icon="${icon}"></span>
+      <div class="profile-row-copy">
         <div class="profile-row-label">${escapeHtml(label)}</div>
         <div class="profile-row-value">${escapeHtml(value)}</div>
       </div>
