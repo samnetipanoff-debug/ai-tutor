@@ -53,7 +53,7 @@ function renderActiveLesson(lesson,lang){
         <span class="lessons-item-title">${escapeHtml(topicLabel)}</span>
         <span class="lessons-item-subtitle">${escapeHtml(lesson.current_word||"")} · ${escapeHtml(stepLabel)}</span>
       </span>
-      <span class="lessons-item-status"><span class="icon" data-icon="play"></span></span>
+      <span class="lessons-item-status"><span class="icon" data-icon="check"></span></span>
     </button>
     <div class="lessons-start"><div class="lessons-section-title">${t("lessons.start_new",null,lang)}</div></div>`;
 }
@@ -63,7 +63,7 @@ function renderTopicItem(topic,lang){
     <button class="lessons-item" type="button" data-topic="${topic.code}">
       <span class="lessons-item-emoji">${topic.emoji}</span>
       <span class="lessons-item-body"><span class="lessons-item-title">${escapeHtml(label)}</span></span>
-      <span class="lessons-item-status"><span class="icon" data-icon="play"></span></span>
+      <span class="lessons-item-status"><span class="icon" data-icon="check"></span></span>
     </button>`;
 }
 async function startLesson(topic){
