@@ -12,15 +12,47 @@ export async function verifyTelegramWebAppData(
     return null;
   }
 
+  // Временно проверяем, какой Telegram-бот использует токен
+  // из Secrets Supabase. Токен нигде не выводится.
+  try {
+    const telegramCheck = await fetch(
+      `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getMe`,
+    );
+
+    const telegramData = await telegramCheck.json();
+
+    console.log("Telegram token check", {
+      ok: telegramData?.ok,
+      botId: telegramData?.result?.id || null,
+      botUsername: telegramData?.result?.username || null,
+    });
+  } catch (error) {
+    console.error("Telegram token check failed", {
+      error: String(error),
+    });
+  }
+
   const params = new URLSearchParams(initData);
+
   const receivedHash = params.get("hash");
 
   if (!receivedHash) {
+    console.error("Telegram auth: HASH_MISSING");
     return null;
   }
 
+  /*
+   * Telegram Web App validation:
+   *
+   * data_check_string =
+   * all received parameters except "hash",
+   * sorted alphabetically and joined with "\n".
+   *
+   * ВАЖНО:
+   * "signature" НЕ удаляем.
+   * Он является частью полученных параметров.
+   */
   params.delete("hash");
-  params.delete("signature");
 
   const dataCheckString = Array.from(params.entries())
     .sort(([a], [b]) => a.localeCompare(b))
@@ -29,8 +61,13 @@ export async function verifyTelegramWebAppData(
 
   const encoder = new TextEncoder();
 
-  // Telegram WebApp secret key:
-  // HMAC-SHA256(key = "WebAppData", message = bot token)
+  /*
+   * Step 1:
+   * secret_key = HMAC-SHA256(
+   *   key = "WebAppData",
+   *   message = bot_token
+   * )
+   */
   const webAppDataKey = await crypto.subtle.importKey(
     "raw",
     encoder.encode("WebAppData"),
@@ -48,6 +85,13 @@ export async function verifyTelegramWebAppData(
     encoder.encode(TELEGRAM_BOT_TOKEN),
   );
 
+  /*
+   * Step 2:
+   * calculated_hash = HMAC-SHA256(
+   *   key = secret_key,
+   *   message = data_check_string
+   * )
+   */
   const secretKey = await crypto.subtle.importKey(
     "raw",
     secretKeyBytes,
@@ -71,34 +115,55 @@ export async function verifyTelegramWebAppData(
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
 
-if (calculatedHash !== receivedHash) {
-  console.error("Telegram auth: HASH_MISMATCH", {
-    hasInitData: Boolean(initData),
-    initDataLength: initData.length,
-    hasHash: Boolean(receivedHash),
-    hasUser: Boolean(params.get("user")),
-    hasAuthDate: Boolean(params.get("auth_date")),
-  });
+  if (calculatedHash !== receivedHash) {
+    console.error("Telegram auth: HASH_MISMATCH", {
+      hasInitData: Boolean(initData),
+      initDataLength: initData.length,
+      hasHash: Boolean(receivedHash),
+      hasSignature: Boolean(params.get("signature")),
+      hasUser: Boolean(params.get("user")),
+      hasAuthDate: Boolean(params.get("auth_date")),
+      receivedHashPrefix: receivedHash.slice(0, 8),
+      calculatedHashPrefix: calculatedHash.slice(0, 8),
+    });
 
-  return null;
+    return null;
   }
 
-  // Проверка свежести initData — не старше 24 часов.
+  // Проверяем свежесть initData — не старше 24 часов.
   const authDate = Number(params.get("auth_date") || 0);
 
-  if (!authDate || Date.now() / 1000 - authDate > 86400) {
+  if (!authDate) {
+    console.error("Telegram auth: AUTH_DATE_MISSING");
+    return null;
+  }
+
+  if (Date.now() / 1000 - authDate > 86400) {
+    console.error("Telegram auth: INIT_DATA_EXPIRED");
     return null;
   }
 
   const userRaw = params.get("user");
 
   if (!userRaw) {
+    console.error("Telegram auth: USER_MISSING");
     return null;
   }
 
   try {
-    return JSON.parse(userRaw);
-  } catch {
+    const user = JSON.parse(userRaw);
+
+    console.log("Telegram auth: SUCCESS", {
+      telegramUserId: user?.id || null,
+      username: user?.username || null,
+    });
+
+    return user;
+  } catch (error) {
+    console.error("Telegram auth: USER_JSON_INVALID", {
+      error: String(error),
+    });
+
     return null;
   }
 }
