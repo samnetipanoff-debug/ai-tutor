@@ -8,16 +8,21 @@ async function ensureBucket() {
     Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
   };
 
-  const existing = await fetch(`${SUPABASE_URL}/storage/v1/bucket/${BUCKET}`, {
+  const existing = await fetch(`${SUPABASE_URL}/storage/v1/bucket`, {
     method: "GET",
     headers,
   });
 
-  if (existing.ok) return;
-
-  if (existing.status !== 404) {
-    throw new Error(`Storage bucket lookup failed: ${existing.status}`);
+  if (!existing.ok) {
+    throw new Error(`Storage bucket lookup failed: ${existing.status} ${await existing.text().catch(() => "")}`);
   }
+
+  const buckets = await existing.json();
+  const found = Array.isArray(buckets)
+    ? buckets.some((bucket) => bucket?.id === BUCKET || bucket?.name === BUCKET)
+    : false;
+
+  if (found) return;
 
   const response = await fetch(`${SUPABASE_URL}/storage/v1/bucket`, {
     method: "POST",
@@ -31,8 +36,10 @@ async function ensureBucket() {
     }),
   });
 
-  if (!response.ok && response.status !== 409 && response.status !== 400) {
-    throw new Error(`Storage bucket error: ${response.status} ${await response.text().catch(() => "")}`);
+  if (!response.ok && response.status !== 409) {
+    throw new Error(
+      `Storage bucket creation failed: ${response.status} ${await response.text().catch(() => "")}`,
+    );
   }
 }
 
