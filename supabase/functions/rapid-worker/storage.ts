@@ -63,5 +63,12 @@ export async function signVoice(path: string) {
   if (!response.ok) return null;
   const data = await response.json();
   if (!data?.signedURL) return null;
-  return data.signedURL.startsWith("http") ? data.signedURL : `${SUPABASE_URL}/storage/v1${data.signedURL}`;
+  if (data.signedURL.startsWith("http")) return data.signedURL;
+  if (data.signedURL.startsWith("/storage/v1")) {
+    return `${SUPABASE_URL}${data.signedURL}`;
+  }
+  const relative = data.signedURL.startsWith("/")
+    ? data.signedURL
+    : `/${data.signedURL}`;
+  return `${SUPABASE_URL}/storage/v1${relative}`;
 }
