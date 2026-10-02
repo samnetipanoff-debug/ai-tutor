@@ -17,6 +17,13 @@ import {
 
 import { updateProgress } from "./db/progress.ts";
 import { getProgress } from "./db/progress-read.ts";
+import {
+  startLesson,
+  getCurrentLesson,
+  answerLesson,
+  nextLessonStep,
+  completeLesson,
+} from "./lessons.ts";
 
 import { askOpenRouter } from "./ai/tutor.ts";
 import { analyzeStudentMessage } from "./ai/mistake-analyzer.ts";
@@ -213,6 +220,9 @@ Deno.serve(async (req) => {
       progress,
       onboarding,
       profile_update,
+      lesson,
+      topic,
+      answer,
     } = body;
 
     // --------------------------------------------------
@@ -255,6 +265,69 @@ Deno.serve(async (req) => {
         telegramUser.id,
         telegramUser,
       );
+
+    // --------------------------------------------------
+    // Lessons
+    // --------------------------------------------------
+
+    if (lesson) {
+      if (!profile?.learning_language) {
+        return jsonResponse(
+          { ok: false, error: "Learning language is not configured" },
+          400,
+          CORS_HEADERS,
+        );
+      }
+
+      let result;
+
+      if (lesson === "start") {
+        result = await startLesson(
+          String(telegramUser.id),
+          profile,
+          topic || null,
+        );
+      } else if (lesson === "current") {
+        result = await getCurrentLesson(
+          String(telegramUser.id),
+        );
+      } else if (lesson === "answer") {
+        if (typeof answer !== "string" || !answer.trim()) {
+          return jsonResponse(
+            { ok: false, error: "Missing lesson answer" },
+            400,
+            CORS_HEADERS,
+          );
+        }
+        result = await answerLesson(
+          String(telegramUser.id),
+          answer,
+        );
+      } else if (lesson === "next") {
+        result = await nextLessonStep(
+          String(telegramUser.id),
+        );
+      } else if (lesson === "complete") {
+        result = await completeLesson(
+          String(telegramUser.id),
+        );
+      } else {
+        return jsonResponse(
+          { ok: false, error: "Unknown lesson action" },
+          400,
+          CORS_HEADERS,
+        );
+      }
+
+      return jsonResponse(
+        {
+          ok: true,
+          lesson: result,
+        },
+        200,
+        CORS_HEADERS,
+      );
+    }
 
     // --------------------------------------------------
     // Progress
