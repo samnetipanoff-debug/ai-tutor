@@ -170,14 +170,21 @@ Deno.serve(async (req) => {
       ]);
 
       let finalAnswer = answer;
+      let correction = null;
 
       if (mistake?.has_mistake) {
-        const correction = mistake.explanation
+        correction = {
+          original: transcription,
+          corrected: mistake.corrected_text || "",
+          explanation: mistake.explanation || "",
+        };
+
+        const correctionText = mistake.explanation
           ? `${mistake.corrected_text}\n\n${mistake.explanation}`
           : mistake.corrected_text;
-        finalAnswer = `${answer}\n\n${correction}`;
-      }
 
+        finalAnswer = `${answer}\n\n${correctionText}`;
+      }
       await saveMessage(
         telegramUser.id,
         conversation.id,
@@ -198,7 +205,8 @@ Deno.serve(async (req) => {
         {
           ok: true,
           text: transcription,
-          answer: finalAnswer,
+          answer,
+          correction,
         },
         200,
         CORS_HEADERS,
