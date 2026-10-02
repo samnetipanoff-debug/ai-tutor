@@ -174,6 +174,7 @@ let toastTimer = null;
 export function showToast(message, variant = "") {
   if (!message) return;
 
+  toastEl.hidden = false;
   toastEl.textContent = message;
   toastEl.className = "toast is-visible" + (variant ? ` is-${variant}` : "");
 
@@ -181,6 +182,7 @@ export function showToast(message, variant = "") {
 
   toastTimer = setTimeout(() => {
     toastEl.classList.remove("is-visible");
+    toastEl.hidden = true;
   }, 3200);
 }
 
@@ -224,6 +226,10 @@ function bindHeader() {
   headerClose.addEventListener("click", () => {
     telegram.haptic.impact("light");
     telegram.close();
+    setTimeout(() => {
+      try { window.close(); } catch (_) {}
+      if (document.visibilityState === "visible" && history.length > 1) history.back();
+    }, 120);
   });
 }
 
@@ -242,7 +248,8 @@ async function bootstrap() {
 
   // No initData — открыто вне Telegram
   if (!telegram.initData) {
-    showToast("Open in Telegram", "error");
+    hideLoader();
+    renderBootMessage("Open AI Tutor inside Telegram to continue.");
     return;
   }
 
@@ -271,8 +278,14 @@ async function bootstrap() {
   } catch (error) {
     console.error("bootstrap error:", error);
     hideLoader();
+    renderBootMessage("Could not load your profile. Please reopen the Mini App from Telegram.");
     showToast(t("errors.network", null, getInterfaceLanguage()), "error");
   }
+}
+
+function renderBootMessage(message) {
+  screenEl.innerHTML = \`<div class="boot-message"><div class="boot-icon">AI</div><h1>AI Tutor</h1><p>\${message}</p><button class="btn btn-primary btn-block" type="button" id="bootRetry">Try again</button></div>\`;
+  screenEl.querySelector("#bootRetry")?.addEventListener("click", () => location.reload());
 }
 
 bootstrap();
