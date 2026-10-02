@@ -667,15 +667,30 @@ function resetRecordingUI(wrapper) {
 }
 
 async function playPersistentVoice(url, bubble) {
-  if (!url) return;
+  if (!url || !bubble) return;
+
+  const audio = bubble.querySelector("audio");
+  if (!audio) return;
+
   try {
     setHeaderStatus("chat.hint_speaking", "speaking");
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`Voice fetch failed: ${response.status}`);
-    const blob = await response.blob();
-    await playBlob(blob, bubble);
+    audio.currentTime = 0;
+    await audio.play();
+    await new Promise((resolve) => {
+      if (audio.ended) {
+        resolve();
+        return;
+      }
+      const finish = () => {
+        audio.removeEventListener("ended", finish);
+        audio.removeEventListener("error", finish);
+        resolve();
+      };
+      audio.addEventListener("ended", finish, { once: true });
+      audio.addEventListener("error", finish, { once: true });
+    });
   } catch (error) {
-    console.error("persistent voice playback error:", error);
+    console.warn("persistent voice autoplay blocked or failed:", error);
   } finally {
     clearHeaderStatus();
   }
