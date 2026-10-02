@@ -31,12 +31,6 @@ const ICONS = {
     </svg>
   `,
 
-  back: `
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <polyline points="15 18 9 12 15 6"/>
-    </svg>
-  `,
-
   close: `
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <line x1="18" y1="6" x2="6" y2="18"/>
@@ -76,12 +70,6 @@ const ICONS = {
     </svg>
   `,
 
-  play: `
-    <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
-      <polygon points="6 3 20 12 6 21 6 3"/>
-    </svg>
-  `,
-
   pause: `
     <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
       <rect x="6" y="4" width="4" height="16"/>
@@ -92,20 +80,6 @@ const ICONS = {
   stop: `
     <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
       <rect x="6" y="6" width="12" height="12" rx="2"/>
-    </svg>
-  `,
-
-  arrowRight: `
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <line x1="5" y1="12" x2="19" y2="12"/>
-      <polyline points="12 5 19 12 12 19"/>
-    </svg>
-  `,
-
-  arrowLeft: `
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <line x1="19" y1="12" x2="5" y2="12"/>
-      <polyline points="12 19 5 12 12 5"/>
     </svg>
   `,
 
