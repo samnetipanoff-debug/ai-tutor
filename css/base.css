@@ -1,18 +1,18 @@
-/* AI TUTOR — COLOR SYSTEM */
+/* AI TUTOR — VISUAL SYSTEM */
 *,*::before,*::after{box-sizing:border-box}
 html,body{margin:0;padding:0;width:100%;height:100%}
 :root{
---c-primary:#8BE28B;--c-primary-hover:#A4F0A4;--c-primary-soft:rgba(139,226,139,.16);--c-primary-soft-2:rgba(139,226,139,.08);--c-primary-text:#07120A;
---c-success:#8BE28B;--c-success-soft:rgba(139,226,139,.15);--c-danger:#FF7373;--c-danger-soft:rgba(255,115,115,.14);--c-warning:#F2C66D;
---c-bg:#101827;--c-bg-elevated:#152033;--c-surface:#1A2638;--c-surface-2:#223149;--c-surface-3:#2B3C57;--c-border:rgba(153,181,219,.18);--c-border-2:rgba(171,198,232,.30);
---c-text:#F6F8FC;--c-text-2:#C4CFDE;--c-text-3:#91A0B5;--c-text-4:#68778D;
+--c-primary:#176b4d;--c-primary-hover:#12563e;--c-primary-soft:rgba(23,107,77,.11);--c-primary-soft-2:rgba(23,107,77,.07);--c-primary-text:#fff;
+--c-success:#176b4d;--c-success-soft:rgba(23,107,77,.10);--c-danger:#c94747;--c-danger-soft:rgba(201,71,71,.10);--c-warning:#a56a16;
+--c-bg:#f3f0e9;--c-bg-elevated:#faf9f5;--c-surface:#fffdfa;--c-surface-2:#f6f3ed;--c-surface-3:#ece8df;--c-border:rgba(34,42,36,.10);--c-border-2:rgba(34,42,36,.16);
+--c-text:#202722;--c-text-2:#59635c;--c-text-3:#7d867f;--c-text-4:#9ba19c;
 --r-xs:8px;--r-sm:12px;--r-md:16px;--r-lg:22px;--r-xl:28px;--r-full:999px;
---sh-sm:0 4px 14px rgba(3,10,20,.20);--sh-md:0 10px 28px rgba(3,10,20,.28);--sh-lg:0 20px 55px rgba(3,10,20,.38);
+--sh-sm:0 5px 18px rgba(45,42,34,.06);--sh-md:0 12px 30px rgba(45,42,34,.09);--sh-lg:0 22px 60px rgba(45,42,34,.13);
 --sp-1:4px;--sp-2:8px;--sp-3:12px;--sp-4:16px;--sp-5:20px;--sp-6:24px;--sp-7:28px;--sp-8:32px;--sp-10:40px;
 --font-sans:Inter,-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
 --fs-xs:11px;--fs-sm:13px;--fs-md:15px;--fs-lg:17px;--fs-xl:20px;--fs-2xl:25px;--fs-3xl:32px;--fs-4xl:40px;
 --t-fast:.16s ease;--t-mid:.28s ease;--t-slow:.45s cubic-bezier(.22,1,.36,1);--safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px)}
 html,body{overflow:hidden;background:var(--c-bg);color:var(--c-text);font-family:var(--font-sans);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
-body{min-height:100dvh;background:radial-gradient(circle at 8% 0%,rgba(71,116,181,.22),transparent 34%),radial-gradient(circle at 100% 88%,rgba(76,76,164,.16),transparent 32%),linear-gradient(145deg,#101827 0%,#0F1B2D 52%,#11192A 100%)}
-body::before{content:"";position:fixed;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.025),transparent 30%);pointer-events:none;z-index:0}
-button,input,textarea,select{font:inherit;color:inherit}button{border:0;background:none;cursor:pointer;padding:0}button:disabled{cursor:default;opacity:.45}h1,h2,h3,h4,h5,h6,p{margin:0}img,svg{display:block;max-width:100%}::selection{background:var(--c-primary-soft);color:var(--c-text)}::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-thumb{background:rgba(177,202,235,.20);border-radius:999px}:focus-visible{outline:2px solid var(--c-primary);outline-offset:3px}@media(prefers-reduced-motion:reduce){*{transition-duration:.01ms!important;animation-duration:.01ms!important;animation-iteration-count:1!important}}
+body{min-height:100dvh;background:linear-gradient(145deg,#f6f3ed 0%,#efebe3 58%,#e8eee8 100%)}
+body::before{content:"";position:fixed;inset:0;background:radial-gradient(circle at 88% 8%,rgba(23,107,77,.08),transparent 28%),radial-gradient(circle at 5% 95%,rgba(197,154,79,.07),transparent 25%);pointer-events:none;z-index:0}
+button,input,textarea,select{font:inherit;color:inherit}button{border:0;background:none;cursor:pointer;padding:0}button:disabled{cursor:default;opacity:.45}h1,h2,h3,h4,h5,h6,p{margin:0}img,svg{display:block;max-width:100%}::selection{background:var(--c-primary-soft);color:var(--c-text)}::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-thumb{background:rgba(32,39,34,.16);border-radius:999px}:focus-visible{outline:2px solid var(--c-primary);outline-offset:3px}@media(prefers-reduced-motion:reduce){*{transition-duration:.01ms!important;animation-duration:.01ms!important;animation-iteration-count:1!important}}
