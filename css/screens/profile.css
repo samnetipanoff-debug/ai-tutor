@@ -14,3 +14,6 @@
 .profile-row-arrow{color:var(--c-text-4)!important}
 .profile-footer{display:none!important}
 .sheet-options{gap:8px}
+
+.profile-row-icon{color:var(--c-primary)!important;width:20px;height:20px;flex:0 0 20px}
+.profile-row-copy{flex:1;min-width:0}
