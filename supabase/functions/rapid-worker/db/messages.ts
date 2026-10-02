@@ -66,7 +66,28 @@ export async function getChatHistory(
     return [];
   }
 
-  const messages = await response.json();
+  const messages = messagesWithParsedVoice(await response.json());
+  const ordered = messages.reverse();
 
-  return messages.reverse();
+  for (const message of ordered) {
+    if (message?.content?.type === "voice" && message.content.audio_path) {
+      message.content.audio_url = await signVoice(message.content.audio_path);
+    }
+  }
+
+  return ordered;
+}
+
+
+function messagesWithParsedVoice(messages: any[]) {
+  return messages.map((message) => {
+    if (!message?.content || typeof message.content !== "string") return message;
+    try {
+      const parsed = JSON.parse(message.content);
+      if (parsed?.type === "voice") return { ...message, content: parsed };
+    } catch {
+      // ordinary text message
+    }
+    return message;
+  });
 }
