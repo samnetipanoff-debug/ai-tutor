@@ -98,7 +98,7 @@ export const api = {
   /**
    * Отправить голосовое сообщение (blob).
    */
-  sendVoice(blob, mimeType = "audio/webm") {
+  sendVoice(blob, mimeType = "audio/webm", options = {}) {
     const formData = new FormData();
 
     const ext = mimeType.includes("mp4")
@@ -108,6 +108,9 @@ export const api = {
         : "webm";
 
     formData.append("audio", blob, `voice.${ext}`);
+    formData.append("mode", options.mode || "free");
+    formData.append("lesson_topic", options.lessonTopic || "");
+    formData.append("retrying_correction", options.retryingCorrection ? "true" : "false");
     return postForm(formData);
   },
 
