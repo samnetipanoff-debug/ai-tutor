@@ -104,9 +104,10 @@ Deno.serve(async (req) => {
       await saveMessage(telegramUser.id, conversation.id, "user", userMessage);
 
       const history = await getChatHistory(telegramUser.id, conversation.id);
+      const aiHistory = historyForAI(history);
 
       const [answer, mistake] = await Promise.all([
-        askOpenRouter(profile, history, true, mode, lessonTopic, retryingCorrection),
+        askOpenRouter(profile, aiHistory, true, mode, lessonTopic, retryingCorrection),
         analyzeStudentMessage(transcription, profile),
       ]);
 
@@ -425,6 +426,7 @@ Deno.serve(async (req) => {
         telegramUser.id,
         conversation.id,
       );
+    const aiHistory = historyForAI(history);
 
     // --------------------------------------------------
     // AI response + mistake analysis
@@ -439,7 +441,7 @@ Deno.serve(async (req) => {
     ] = await Promise.all([
       askOpenRouter(
         profile,
-        history,
+        aiHistory,
         isVoiceMessage,
       ),
 
@@ -530,3 +532,15 @@ Deno.serve(async (req) => {
     );
   }
 });
+
+function historyForAI(history: any[]) {
+  return history.map((message) => {
+    if (message?.content && typeof message.content === "object") {
+      return {
+        ...message,
+        content: message.content.transcript || message.content.text || "",
+      };
+    }
+    return message;
+  });
+}
