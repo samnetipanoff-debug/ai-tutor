@@ -113,7 +113,7 @@ Deno.serve(async (req) => {
       let spokenAnswer = answer;
       let correction = null;
 
-      if (mistake?.has_mistake && !retryingCorrection) {
+      if (mistake?.has_mistake) {
         correction = {
           original: transcription,
           corrected: mistake.corrected_text || "",
@@ -131,6 +131,7 @@ Deno.serve(async (req) => {
       );
 
       const speech = await generateSpeech(spokenAnswer, profile.learning_language);
+      if (!speech) throw new Error("Tutor voice generation failed");
       const botAudioPath = `users/${telegramUser.id}/${crypto.randomUUID()}.mp3`;
       await uploadVoice(speech, "audio/mpeg", botAudioPath);
 
