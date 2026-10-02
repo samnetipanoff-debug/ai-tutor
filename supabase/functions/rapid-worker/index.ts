@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
       const audioBytes = await audio.arrayBuffer();
       const conversation = await getOrCreateConversation(telegramUser.id);
 
-      const userAudioPath = `users/${telegramUser.id}/${crypto.randomUUID()}.webm`;
+      const userAudioPath = `users/${telegramUser.id}/${crypto.randomUUID()}${audioExtension(mimeType)}`;
       await uploadVoice(audioBytes, mimeType, userAudioPath);
 
       const transcription = await transcribeAudio(audio, profile.learning_language);
@@ -108,41 +108,61 @@ Deno.serve(async (req) => {
       const history = await getChatHistory(telegramUser.id, conversation.id);
       const aiHistory = historyForAI(history);
 
-      const [answer, mistake] = await Promise.all([
-        askOpenRouter(profile, aiHistory, true, mode, lessonTopic, retryingCorrection),
-        analyzeStudentMessage(transcription, profile),
-      ]);
+      const analysis = await analyzeStudentMessage(transcription, profile);
 
+      const answer = await askOpenRouter(
+        profile,
+        aiHistory,
+        true,
+        mode,
+        lessonTopic,
+        retryingCorrection,
+        analysis,
+      );
+
+      const isAmbiguous = analysis?.status === "ambiguous";
       let spokenAnswer = answer;
       let displayAnswer = answer;
       let correction = null;
       let requiresRepeat = false;
 
-      if (mistake?.has_mistake && mistake.corrected_text) {
+      if (analysis?.has_mistake && analysis.corrected_text) {
         correction = {
           original: transcription,
-          corrected: mistake.corrected_text,
-          explanation: mistake.explanation || "",
+          corrected: analysis.corrected_text,
+          explanation: analysis.explanation || "",
+          status: analysis.status || "mistake",
         };
 
-        // During a correction turn the audio must contain ONLY the correct
-        // learning-language phrase. The instruction to repeat is text/meta,
-        // not something that should be spoken.
-        spokenAnswer = mistake.corrected_text;
-        displayAnswer = `Please repeat: ${mistake.corrected_text}`;
+        // Voice contains ONLY the complete corrected phrase in the learning language.
+        spokenAnswer = analysis.corrected_text;
+        displayAnswer = `${repeatInstruction(profile.interface_language || "en")} ${analysis.corrected_text}`;
         requiresRepeat = true;
+      } else if (isAmbiguous) {
+        // Ambiguous meaning is a text-only clarification. Never guess and never
+        // synthesize an interface-language clarification as learning-language speech.
+        spokenAnswer = "";
+        displayAnswer = analysis.clarification_question || answer;
       }
 
-      const translation = await translateTutorAnswer(
-        displayAnswer,
-        profile.learning_language,
-        profile.interface_language || "en",
-      );
+      const translation = isAmbiguous
+        ? ""
+        : await translateTutorAnswer(
+            displayAnswer,
+            profile.learning_language,
+            profile.interface_language || "en",
+          );
 
-      const speech = await generateSpeech(spokenAnswer, profile.learning_language);
-      if (!speech) throw new Error("Tutor voice generation failed");
-      const botAudioPath = `users/${telegramUser.id}/${crypto.randomUUID()}.mp3`;
-      await uploadVoice(speech, "audio/mpeg", botAudioPath);
+      let botAudioPath = null;
+      let botAudioUrl = null;
+
+      if (spokenAnswer) {
+        const speech = await generateSpeech(spokenAnswer, profile.learning_language);
+        if (!speech) throw new Error("Tutor voice generation failed");
+        botAudioPath = `users/${telegramUser.id}/${crypto.randomUUID()}.mp3`;
+        await uploadVoice(speech, "audio/mpeg", botAudioPath);
+        botAudioUrl = await signVoice(botAudioPath);
+      }
 
       const assistantMessage = JSON.stringify({
         type: "voice",
@@ -163,7 +183,6 @@ Deno.serve(async (req) => {
       }
 
       const userAudioUrl = await signVoice(userAudioPath);
-      const botAudioUrl = await signVoice(botAudioPath);
 
       return jsonResponse({
         ok: true,
@@ -174,7 +193,7 @@ Deno.serve(async (req) => {
         correction,
         requires_repeat: requiresRepeat,
         user_voice: { audio_url: userAudioUrl, transcript: transcription },
-        bot_voice: { audio_url: botAudioUrl, text: displayAnswer, speech_text: spokenAnswer, translation },
+        bot_voice: { audio_url: botAudioUrl, text: displayAnswer, speech_text: spokenAnswer, translation, clarification: isAmbiguous },
       }, 200, CORS_HEADERS);
     }
 
@@ -553,4 +572,25 @@ function historyForAI(history: any[]) {
     }
     return message;
   });
+}
+
+
+function audioExtension(mimeType: string) {
+  const mime = (mimeType || "").toLowerCase();
+  if (mime.includes("mp4") || mime.includes("m4a")) return ".m4a";
+  if (mime.includes("ogg")) return ".ogg";
+  if (mime.includes("mpeg") || mime.includes("mp3")) return ".mp3";
+  return ".webm";
+}
+
+function repeatInstruction(interfaceLanguage: string) {
+  const instructions: Record<string, string> = {
+    en: "Please repeat:",
+    ru: "Попробуй повторить:",
+    sr: "Pokušaj da ponoviš:",
+    de: "Versuche es noch einmal:",
+    es: "Inténtalo de nuevo:",
+    fr: "Essaie encore :",
+  };
+  return instructions[interfaceLanguage] || instructions.en;
 }
