@@ -67,6 +67,8 @@ function renderContent(progress, vocabulary, mistakes, lang) {
   const streak = progress.streak || 0;
 
   return `
+    <section class="progress-hero"><div class="progress-hero-kicker">${t("progress.title",null,lang)}</div><div class="progress-hero-title">${t("progress.title",null,lang)}</div><div class="progress-hero-sub">${t("progress.lessons_completed",null,lang)} · ${lessonsCount}</div></section>
+
     <div class="progress-stats">
       ${statCard("book", lessonsCount, t("progress.lessons_completed", null, lang))}
       ${statCard("sparkles", wordsCount, t("progress.words_learned", null, lang))}
@@ -119,7 +121,7 @@ function renderMistakes(mistakes, lang) {
                   ${escapeHtml(m.original_text || "")}
                 </span>
                  / 
-                <span style="color: var(--c-success);">
+                <span style="color: var(--green);">
                   ${escapeHtml(m.corrected_text || "")}
                 </span>
               </div>
