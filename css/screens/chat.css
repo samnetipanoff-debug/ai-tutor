@@ -1,12 +1,2 @@
-/* CHAT — immersive conversation */
-.chat{height:100%;display:flex;flex-direction:column;background:radial-gradient(circle at 50% -10%,rgba(139,226,139,.055),transparent 35%),var(--c-bg)}
-.chat-scroll{flex:1;overflow:auto;padding:24px 18px 22px!important}
-.chat-messages{gap:11px!important}
-.msg-bubble{max-width:86%!important;padding:13px 16px!important;border-radius:20px!important;font-size:15px!important;box-shadow:none!important}
-.msg.is-user .msg-bubble{border-bottom-right-radius:7px!important;box-shadow:0 7px 20px rgba(139,226,139,.10)!important}
-.msg.is-bot .msg-bubble{background:rgba(255,255,255,.045)!important;border:1px solid rgba(255,255,255,.08)!important;border-bottom-left-radius:7px!important}
-.chat-input{padding:10px 14px calc(10px + var(--safe-bottom))!important;background:rgba(10,11,13,.88)!important;border-top:1px solid rgba(255,255,255,.07)!important}
-.chat-input-field{height:50px!important;border-radius:18px!important;background:rgba(255,255,255,.055)!important;border-color:rgba(255,255,255,.09)!important}
-.chat-input-btn{width:50px!important;height:50px!important;border-radius:18px!important}
-.chat-empty{min-height:60%!important}
-.chat-empty-emoji{font-size:58px!important}
+/* CHAT — conversation surface */
+.chat{height:100%;display:flex;flex-direction:column;background:transparent}.chat-scroll{flex:1;overflow:auto;padding:22px 16px!important}.chat-messages{gap:12px!important}.msg-bubble{max-width:84%!important;padding:13px 16px!important;border-radius:19px!important;font-size:15px!important}.msg.is-user .msg-bubble{background:#456A57!important;border:1px solid rgba(139,226,139,.30)!important;border-bottom-right-radius:7px!important;box-shadow:0 7px 18px rgba(3,12,8,.18)!important}.msg.is-bot .msg-bubble{background:var(--c-surface)!important;border:1px solid var(--c-border-2)!important;border-bottom-left-radius:7px!important}.chat-input{padding:9px 13px calc(9px + var(--safe-bottom))!important;background:#152033!important;border-top:1px solid var(--c-border-2)!important}.chat-input-field{height:50px!important;border-radius:17px!important;background:#223149!important;border:1px solid var(--c-border-2)!important}.chat-input-btn{width:50px!important;height:50px!important;border-radius:17px!important;background:var(--c-surface-2)!important;border:1px solid var(--c-border-2)!important}.chat-empty-emoji{font-size:56px!important}
