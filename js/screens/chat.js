@@ -1,25 +1,10 @@
-/* =========================================================
-   CHAT SCREEN — text + explicit voice messages
-   ========================================================= */
-
+/* CHAT — guided voice conversation */
 import { api } from "../api.js";
 import { getState, setState } from "../state.js";
 import { t } from "../i18n.js";
-import {
-  showToast,
-  setHeaderStatus,
-  clearHeaderStatus,
-} from "../app.js";
+import { showToast, setHeaderStatus, clearHeaderStatus } from "../app.js";
 import { hydrateIcons } from "../icons.js";
-import {
-  fetchTts,
-  playBlob,
-  stopCurrent,
-} from "../audio.js";
-
-/* =========================================================
-   LOCAL STATE
-   ========================================================= */
+import { fetchTts, playBlob, stopCurrent } from "../audio.js";
 
 let sending = false;
 let mediaRecorder = null;
@@ -29,19 +14,139 @@ let recordingStartedAt = 0;
 let recordingTimer = null;
 let pendingVoiceBlob = null;
 let pendingVoiceMime = "audio/webm";
+let inactivityTimer = null;
+let inactivityPromptShown = false;
+let awaitingCorrectionRepeat = false;
 
-/* =========================================================
-   RENDER
-   ========================================================= */
+const TOPICS = [
+  { code: "work", emoji: "💼" },
+  { code: "food", emoji: "🍽" },
+  { code: "travel", emoji: "✈️" },
+  { code: "family", emoji: "👨‍👩‍👧" },
+  { code: "hobby", emoji: "🎨" },
+  { code: "shopping", emoji: "🛍" },
+];
 
 export function renderChat() {
   resetRecordingState();
+  clearInactivityTimer();
 
-  const { profile, history } = getState();
-  const lang = profile?.interface_language || "en";
+  const state = getState();
+  const session = state.voiceSession;
 
   const wrapper = document.createElement("div");
   wrapper.className = "chat";
+
+  if (!session) {
+    renderSessionChooser(wrapper);
+    return wrapper;
+  }
+
+  renderConversation(wrapper, session);
+  return wrapper;
+}
+
+function renderSessionChooser(wrapper) {
+  const { profile, currentLesson } = getState();
+  const lang = profile?.interface_language || "en";
+
+  wrapper.innerHTML = `
+    <div class="voice-session-scroll">
+      <section class="voice-session-hero">
+        <div class="voice-session-kicker">${escapeHtml(t("chat.voice_mode", null, lang))}</div>
+        <h1>${escapeHtml(t("chat.session_question", null, lang))}</h1>
+        <p>${escapeHtml(t("chat.session_subtitle", null, lang))}</p>
+      </section>
+
+      <div class="voice-session-options">
+        <button class="voice-session-option" type="button" data-session="continue">
+          <span class="voice-session-option-icon">▶</span>
+          <span><strong>${escapeHtml(t("chat.continue_lesson", null, lang))}</strong><small>${currentLesson ? escapeHtml(t("chat.current_lesson", null, lang)) : escapeHtml(t("chat.no_current_lesson", null, lang))}</small></span>
+        </button>
+        <button class="voice-session-option" type="button" data-session="repeat">
+          <span class="voice-session-option-icon">↻</span>
+          <span><strong>${escapeHtml(t("chat.repeat_lesson", null, lang))}</strong><small>${escapeHtml(t("chat.choose_lesson", null, lang))}</small></span>
+        </button>
+        <button class="voice-session-option is-wide" type="button" data-session="free">
+          <span class="voice-session-option-icon">◌</span>
+          <span><strong>${escapeHtml(t("chat.free_conversation", null, lang))}</strong><small>${escapeHtml(t("chat.free_conversation_hint", null, lang))}</small></span>
+        </button>
+      </div>
+    </div>
+  `;
+
+  wrapper.querySelector('[data-session="continue"]')?.addEventListener("click", () => {
+    if (currentLesson) {
+      beginSession(wrapper, { mode: "lesson", lessonTopic: currentLesson.topic || "" });
+    } else {
+      showLessonPicker(wrapper);
+    }
+  });
+
+  wrapper.querySelector('[data-session="repeat"]')?.addEventListener("click", () => showLessonPicker(wrapper));
+  wrapper.querySelector('[data-session="free"]')?.addEventListener("click", () => {
+    beginSession(wrapper, { mode: "free", lessonTopic: "" });
+  });
+}
+
+function showLessonPicker(wrapper) {
+  const { profile } = getState();
+  const lang = profile?.interface_language || "en";
+
+  wrapper.innerHTML = `
+    <div class="voice-session-scroll">
+      <section class="voice-session-hero compact">
+        <div class="voice-session-kicker">${escapeHtml(t("chat.repeat_lesson", null, lang))}</div>
+        <h1>${escapeHtml(t("chat.choose_lesson", null, lang))}</h1>
+      </section>
+      <div class="voice-lesson-grid">
+        ${TOPICS.map((topic) => `
+          <button class="voice-lesson-card" type="button" data-topic="${topic.code}">
+            <span>${topic.emoji}</span>
+            <strong>${escapeHtml(t(`lessons.topics.${topic.code}`, null, lang))}</strong>
+          </button>
+        `).join("")}
+      </div>
+      <button class="voice-back-choice" type="button" data-back-choice>${escapeHtml(t("chat.back_to_choices", null, lang))}</button>
+    </div>
+  `;
+
+  wrapper.querySelectorAll("[data-topic]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const topic = button.getAttribute("data-topic");
+      const old = button.innerHTML;
+      button.disabled = true;
+      button.innerHTML = `<strong>${escapeHtml(t("chat.loading_lesson", null, lang))}</strong>`;
+      try {
+        const result = await api.startLesson(topic);
+        if (!result?.lesson) throw new Error("Lesson was not returned");
+        setState({ currentLesson: result.lesson });
+        beginSession(wrapper, { mode: "lesson", lessonTopic: topic });
+      } catch (error) {
+        console.error(error);
+        button.disabled = false;
+        button.innerHTML = old;
+        showToast(t("errors.network", null, lang), "error");
+      }
+    });
+  });
+
+  wrapper.querySelector("[data-back-choice]")?.addEventListener("click", () => renderSessionChooser(wrapper));
+}
+
+function beginSession(wrapper, session) {
+  setState({
+    voiceSession: {
+      mode: session.mode,
+      lessonTopic: session.lessonTopic || "",
+    },
+  });
+  renderConversation(wrapper, getState().voiceSession);
+}
+
+function renderConversation(wrapper, session) {
+  const { profile, history } = getState();
+  const lang = profile?.interface_language || "en";
 
   wrapper.innerHTML = `
     <div class="chat-scroll" id="chatScroll">
@@ -51,29 +156,11 @@ export function renderChat() {
     <div class="voice-preview-wrap" id="voicePreviewWrap" hidden></div>
 
     <div class="chat-input">
-      <input
-        class="chat-input-field"
-        id="chatInput"
-        type="text"
-        placeholder="${t("chat.placeholder", null, lang)}"
-        autocomplete="off"
-        autocorrect="on"
-        autocapitalize="sentences"
-      />
-      <button
-        class="chat-input-btn"
-        id="chatMic"
-        type="button"
-        aria-label="${t("chat.record_voice", null, lang)}"
-      >
+      <input class="chat-input-field" id="chatInput" type="text" placeholder="${t("chat.placeholder", null, lang)}" autocomplete="off" />
+      <button class="chat-input-btn" id="chatMic" type="button" aria-label="${t("chat.record_voice", null, lang)}">
         <span class="icon" data-icon="mic"></span>
       </button>
-      <button
-        class="chat-input-btn"
-        id="chatSend"
-        type="button"
-        aria-label="${t("chat.send", null, lang)}"
-      >
+      <button class="chat-input-btn" id="chatSend" type="button" aria-label="${t("chat.send", null, lang)}">
         <span class="icon" data-icon="check"></span>
       </button>
     </div>
@@ -89,14 +176,7 @@ export function renderChat() {
 
   renderHistory(messages, history);
 
-  if (!history || history.length === 0) {
-    renderEmpty(messages, lang);
-  }
-
-  sendBtn.addEventListener("click", () => {
-    sendTextMessage(input.value, messages, input, sendBtn);
-  });
-
+  sendBtn.addEventListener("click", () => sendTextMessage(input.value, messages, input, sendBtn));
   input.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -105,49 +185,46 @@ export function renderChat() {
   });
 
   micBtn.addEventListener("click", () => {
-    if (mediaRecorder?.state === "recording") {
-      stopRecording();
-    } else {
-      startRecording(wrapper);
-    }
+    if (mediaRecorder?.state === "recording") stopRecording();
+    else startRecording(wrapper);
   });
 
   scrollToBottom(scroll);
 
-  if (window.innerWidth > 640) {
-    input.focus();
+  if (!history?.length) {
+    requestTutorOpening(wrapper);
+  } else {
+    armInactivityTimer(wrapper);
   }
-
-  return wrapper;
 }
 
-/* =========================================================
-   HISTORY / EMPTY
-   ========================================================= */
+async function requestTutorOpening(wrapper) {
+  const messages = wrapper.querySelector("#chatMessages");
+  const session = getState().voiceSession;
+  if (!messages || !session) return;
+
+  const lang = getState().profile?.interface_language || "en";
+  const text = session.mode === "lesson"
+    ? t("chat.lesson_opening", null, lang)
+    : t("chat.free_opening", null, lang);
+
+  // The opening is intentionally a UI prompt only. The first learner voice message
+  // goes through the normal tutor pipeline so the conversation remains persistent.
+  appendMessage(messages, "bot", text);
+  armInactivityTimer(wrapper);
+}
 
 function renderHistory(messages, history) {
   if (!Array.isArray(history)) return;
-
-  for (const m of history) {
-    if (!m?.role || !m?.content) continue;
-    appendMessage(messages, m.role === "user" ? "user" : "bot", m.content);
+  for (const message of history) {
+    if (!message?.role || !message?.content) continue;
+    if (typeof message.content === "object" && message.content.type === "voice") {
+      appendVoiceMessage(messages, message.role === "user" ? "user" : "bot", message.content);
+    } else {
+      appendMessage(messages, message.role === "user" ? "user" : "bot", String(message.content));
+    }
   }
 }
-
-function renderEmpty(messages, lang) {
-  const el = document.createElement("div");
-  el.className = "chat-empty";
-  el.innerHTML = `
-    <div class="chat-empty-emoji">🎙</div>
-    <div class="chat-empty-title">${t("chat.voice_title", null, lang)}</div>
-    <div class="text-sm">${t("chat.hint_microphone", null, lang)}</div>
-  `;
-  messages.appendChild(el);
-}
-
-/* =========================================================
-   MESSAGE APPEND
-   ========================================================= */
 
 function appendMessage(container, role, text) {
   const empty = container.querySelector(".chat-empty");
@@ -155,17 +232,62 @@ function appendMessage(container, role, text) {
 
   const wrapper = document.createElement("div");
   wrapper.className = `msg is-${role}`;
-
   const bubble = document.createElement("div");
   bubble.className = "msg-bubble";
   bubble.textContent = text;
+  wrapper.appendChild(bubble);
+  container.appendChild(wrapper);
+  scrollToBottom(container.closest(".chat-scroll"));
+  return bubble;
+}
+
+function appendVoiceMessage(container, role, voice) {
+  const wrapper = document.createElement("div");
+  wrapper.className = `msg is-${role}`;
+  const bubble = document.createElement("div");
+  bubble.className = "msg-voice";
+
+  const audio = document.createElement("audio");
+  audio.controls = true;
+  audio.preload = "metadata";
+  if (voice.audio_url) audio.src = voice.audio_url;
+
+  const meta = document.createElement("div");
+  meta.className = "msg-voice-label";
+  meta.textContent = role === "user"
+    ? t("chat.you_voice", null, getState().profile?.interface_language || "en")
+    : t("chat.tutor_voice", null, getState().profile?.interface_language || "en");
+
+  bubble.append(meta, audio);
+
+  if (voice.transcript) {
+    const transcript = document.createElement("div");
+    transcript.className = "msg-voice-transcript";
+    transcript.textContent = voice.transcript;
+    bubble.appendChild(transcript);
+  }
+
+  if (voice.text) {
+    const text = document.createElement("div");
+    text.className = "msg-voice-text";
+    text.textContent = voice.text;
+    bubble.appendChild(text);
+  }
+
+  if (voice.translation) {
+    const translation = document.createElement("div");
+    translation.className = "msg-voice-translation";
+    translation.textContent = voice.translation;
+    bubble.appendChild(translation);
+  }
+
+  if (voice.correction?.corrected) {
+    appendCorrection(container, voice.correction);
+  }
 
   wrapper.appendChild(bubble);
   container.appendChild(wrapper);
-
-  const scroll = container.closest(".chat-scroll");
-  if (scroll) scrollToBottom(scroll);
-
+  scrollToBottom(container.closest(".chat-scroll"));
   return bubble;
 }
 
@@ -174,17 +296,12 @@ function appendCorrection(container, correction) {
 
   const wrapper = document.createElement("div");
   wrapper.className = "msg is-bot";
-
   const card = document.createElement("div");
   card.className = "msg-correction";
 
   const label = document.createElement("div");
   label.className = "msg-correction-label";
-  label.textContent = t(
-    "chat.correction",
-    null,
-    getState().profile?.interface_language || "en",
-  );
+  label.textContent = t("chat.correction", null, getState().profile?.interface_language || "en");
 
   const corrected = document.createElement("div");
   corrected.className = "msg-correction-text";
@@ -201,35 +318,23 @@ function appendCorrection(container, correction) {
 
   wrapper.appendChild(card);
   container.appendChild(wrapper);
-
-  const scroll = container.closest(".chat-scroll");
-  if (scroll) scrollToBottom(scroll);
+  scrollToBottom(container.closest(".chat-scroll"));
 }
 
 function appendThinking(container) {
   const wrapper = document.createElement("div");
   wrapper.className = "msg is-bot";
-
   const bubble = document.createElement("div");
   bubble.className = "msg-bubble";
-
   const thinking = document.createElement("div");
   thinking.className = "msg-thinking";
   thinking.innerHTML = "<span></span><span></span><span></span>";
-
   bubble.appendChild(thinking);
   wrapper.appendChild(bubble);
   container.appendChild(wrapper);
-
-  const scroll = container.closest(".chat-scroll");
-  if (scroll) scrollToBottom(scroll);
-
+  scrollToBottom(container.closest(".chat-scroll"));
   return wrapper;
 }
-
-/* =========================================================
-   TEXT SEND
-   ========================================================= */
 
 async function sendTextMessage(raw, messages, input, sendBtn) {
   const text = (raw || "").trim();
@@ -238,58 +343,35 @@ async function sendTextMessage(raw, messages, input, sendBtn) {
   sending = true;
   sendBtn.disabled = true;
   input.value = "";
-
   stopCurrent();
+  clearInactivityTimer();
 
   appendMessage(messages, "user", text);
-
   const thinking = appendThinking(messages);
-
-  setHeaderStatus("chat.hint_thinking", "thinking");
 
   try {
     const data = await api.sendText(text);
     thinking.remove();
-
     if (!data?.answer) throw new Error("No answer");
-
     const bubble = appendMessage(messages, "bot", data.answer);
-
     const { history } = getState();
-    setState({
-      history: [
-        ...(history || []),
-        { role: "user", content: text },
-        { role: "assistant", content: data.answer },
-      ],
-    });
-
-    clearHeaderStatus();
+    setState({ history: [...(history || []), { role: "user", content: text }, { role: "assistant", content: data.answer }] });
     await playAnswer(data.answer, bubble);
+    armInactivityTimer(messages.closest(".chat"));
   } catch (error) {
-    console.error("send error:", error);
+    console.error(error);
     thinking.remove();
-
-    const lang = getState().profile?.interface_language || "en";
-    appendMessage(messages, "bot", t("chat.error_send", null, lang));
-
-    setHeaderStatus("chat.error_send", "error");
-    setTimeout(clearHeaderStatus, 3000);
+    appendMessage(messages, "bot", t("chat.error_send", null, getState().profile?.interface_language || "en"));
   } finally {
     sending = false;
     sendBtn.disabled = false;
   }
 }
 
-/* =========================================================
-   EXPLICIT VOICE RECORDING
-   ========================================================= */
-
 async function startRecording(wrapper) {
   if (sending || mediaRecorder) return;
 
   const lang = getState().profile?.interface_language || "en";
-
   if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
     showToast(t("chat.error_voice", null, lang), "error");
     return;
@@ -297,13 +379,8 @@ async function startRecording(wrapper) {
 
   try {
     recordingStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
     const mimeType = getRecordingMimeType();
-    mediaRecorder = new MediaRecorder(
-      recordingStream,
-      mimeType ? { mimeType } : undefined,
-    );
-
+    mediaRecorder = new MediaRecorder(recordingStream, mimeType ? { mimeType } : undefined);
     recordingChunks = [];
     recordingStartedAt = Date.now();
     pendingVoiceBlob = null;
@@ -314,10 +391,7 @@ async function startRecording(wrapper) {
     });
 
     mediaRecorder.addEventListener("stop", () => {
-      const blob = new Blob(recordingChunks, {
-        type: pendingVoiceMime,
-      });
-
+      const blob = new Blob(recordingChunks, { type: pendingVoiceMime });
       releaseRecordingStream();
       mediaRecorder = null;
       recordingChunks = [];
@@ -329,56 +403,36 @@ async function startRecording(wrapper) {
       }
 
       pendingVoiceBlob = blob;
-      showVoicePreview(wrapper, blob);
+      showVoicePreview(wrapper);
     });
 
     mediaRecorder.start(250);
     setRecordingUI(wrapper, true);
     setHeaderStatus("chat.recording", "listening");
   } catch (error) {
-    console.error("microphone error:", error);
+    console.error(error);
     releaseRecordingStream();
     mediaRecorder = null;
-
-    showToast(
-      t("chat.hint_microphone_denied", null, lang),
-      "error",
-    );
+    showToast(t("chat.hint_microphone_denied", null, lang), "error");
   }
 }
 
 function stopRecording() {
   if (!mediaRecorder || mediaRecorder.state !== "recording") return;
-
   mediaRecorder.stop();
-  setHeaderStatus(
-    "chat.processing_recording",
-    "thinking",
-  );
+  setHeaderStatus("chat.processing_recording", "thinking");
 }
 
 function getRecordingMimeType() {
-  const candidates = [
-    "audio/webm;codecs=opus",
-    "audio/webm",
-    "audio/mp4",
-    "audio/ogg;codecs=opus",
-  ];
-
-  return candidates.find((type) => {
-    try {
-      return MediaRecorder.isTypeSupported(type);
-    } catch {
-      return false;
-    }
-  }) || "";
+  return ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"]
+    .find((type) => {
+      try { return MediaRecorder.isTypeSupported(type); } catch { return false; }
+    }) || "";
 }
 
 function releaseRecordingStream() {
   if (!recordingStream) return;
-  for (const track of recordingStream.getTracks()) {
-    track.stop();
-  }
+  recordingStream.getTracks().forEach((track) => track.stop());
   recordingStream = null;
 }
 
@@ -386,56 +440,32 @@ function setRecordingUI(wrapper, active) {
   const micBtn = wrapper.querySelector("#chatMic");
   const input = wrapper.querySelector("#chatInput");
   const sendBtn = wrapper.querySelector("#chatSend");
-
   if (!micBtn) return;
 
   if (active) {
     micBtn.classList.add("is-recording");
-    micBtn.innerHTML = '<span class="icon" data-icon="stop"></span>';
-    micBtn.setAttribute(
-      "aria-label",
-      t(
-        "chat.stop_recording",
-        null,
-        getState().profile?.interface_language || "en",
-      ),
-    );
-    hydrateIcons(micBtn);
+    micBtn.innerHTML = '<span class="voice-recording-time">00:00</span>';
     input.disabled = true;
     sendBtn.disabled = true;
     startRecordingTimer(wrapper);
   } else {
     micBtn.classList.remove("is-recording");
     micBtn.innerHTML = '<span class="icon" data-icon="mic"></span>';
-    micBtn.setAttribute(
-      "aria-label",
-      t(
-        "chat.record_voice",
-        null,
-        getState().profile?.interface_language || "en",
-      ),
-    );
     hydrateIcons(micBtn);
     input.disabled = false;
     sendBtn.disabled = false;
-    stopRecordingTimer(wrapper);
+    stopRecordingTimer();
   }
 }
 
 function startRecordingTimer(wrapper) {
-  stopRecordingTimer(wrapper);
+  stopRecordingTimer();
   const micBtn = wrapper.querySelector("#chatMic");
-  if (!micBtn) return;
-
-  const update = () => {
+  recordingTimer = setInterval(() => {
+    if (!micBtn) return;
     const seconds = Math.floor((Date.now() - recordingStartedAt) / 1000);
-    micBtn.innerHTML = `
-      <span class="voice-recording-time">${formatDuration(seconds)}</span>
-    `;
-  };
-
-  update();
-  recordingTimer = setInterval(update, 250);
+    micBtn.querySelector(".voice-recording-time").textContent = formatDuration(seconds);
+  }, 250);
 }
 
 function stopRecordingTimer() {
@@ -444,68 +474,36 @@ function stopRecordingTimer() {
 }
 
 function formatDuration(seconds) {
-  const min = Math.floor(seconds / 60);
-  const sec = seconds % 60;
-  return `${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+  return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
-/* =========================================================
-   VOICE PREVIEW / SEND
-   ========================================================= */
-
-function showVoicePreview(wrapper, blob) {
+function showVoicePreview(wrapper) {
   setRecordingUI(wrapper, false);
-
   const wrap = wrapper.querySelector("#voicePreviewWrap");
   if (!wrap) return;
 
   const lang = getState().profile?.interface_language || "en";
-  const duration = Math.max(
-    1,
-    Math.round((Date.now() - recordingStartedAt) / 1000),
-  );
+  const duration = Math.max(1, Math.round((Date.now() - recordingStartedAt) / 1000));
 
   wrap.hidden = false;
   wrap.innerHTML = `
     <div class="voice-preview">
-      <div class="voice-preview-icon">
-        <span class="icon" data-icon="mic"></span>
-      </div>
-      <div class="voice-preview-info">
-        <strong>${t("chat.voice_ready", null, lang)}</strong>
-        <span>${formatDuration(duration)}</span>
-      </div>
+      <div class="voice-preview-icon"><span class="icon" data-icon="mic"></span></div>
+      <div class="voice-preview-info"><strong>${t("chat.voice_ready", null, lang)}</strong><span>${formatDuration(duration)}</span></div>
       <div class="voice-preview-actions">
-        <button class="voice-preview-cancel" type="button">
-          ${t("chat.delete_voice", null, lang)}
-        </button>
-        <button class="voice-preview-send" type="button">
-          <span class="icon" data-icon="check"></span>
-          <span>${t("chat.send_voice", null, lang)}</span>
-        </button>
+        <button class="voice-preview-cancel" type="button">${t("chat.delete_voice", null, lang)}</button>
+        <button class="voice-preview-send" type="button"><span class="icon" data-icon="check"></span><span>${t("chat.send_voice", null, lang)}</span></button>
       </div>
-    </div>
-  `;
+    </div>`;
 
   hydrateIcons(wrap);
-
-  wrap.querySelector(".voice-preview-cancel")?.addEventListener(
-    "click",
-    () => {
-      pendingVoiceBlob = null;
-      wrap.hidden = true;
-      wrap.innerHTML = "";
-      clearHeaderStatus();
-    },
-  );
-
-  wrap.querySelector(".voice-preview-send")?.addEventListener(
-    "click",
-    () => {
-      sendPendingVoice(wrapper);
-    },
-  );
-
+  wrap.querySelector(".voice-preview-cancel")?.addEventListener("click", () => {
+    pendingVoiceBlob = null;
+    wrap.hidden = true;
+    wrap.innerHTML = "";
+    clearHeaderStatus();
+  });
+  wrap.querySelector(".voice-preview-send")?.addEventListener("click", () => sendPendingVoice(wrapper));
   clearHeaderStatus();
 }
 
@@ -517,59 +515,68 @@ async function sendPendingVoice(wrapper) {
   pendingVoiceBlob = null;
 
   const wrap = wrapper.querySelector("#voicePreviewWrap");
-  if (wrap) {
-    wrap.hidden = true;
-    wrap.innerHTML = "";
-  }
+  if (wrap) { wrap.hidden = true; wrap.innerHTML = ""; }
 
   const messages = wrapper.querySelector("#chatMessages");
   if (!messages) return;
 
   sending = true;
-  setHeaderStatus("chat.hint_thinking", "thinking");
+  clearInactivityTimer();
   stopCurrent();
-
   const thinking = appendThinking(messages);
+  const session = getState().voiceSession || { mode: "free", lessonTopic: "" };
 
   try {
-    const data = await api.sendVoice(blob, mimeType);
+    const data = await api.sendVoice(blob, mimeType, {
+      mode: session.mode,
+      lessonTopic: session.lessonTopic,
+      retryingCorrection: awaitingCorrectionRepeat,
+    });
 
     thinking.remove();
 
-    const recognized = (data?.text || "").trim();
-    const answer = (data?.answer || "").trim();
-
-    if (!recognized) throw new Error("No transcription");
-    if (!answer) throw new Error("No answer from voice pipeline");
-
-    appendMessage(messages, "user", recognized);
-
-    const bubble = appendMessage(messages, "bot", answer);
-
-    if (data?.correction?.corrected) {
-      appendCorrection(messages, data.correction);
+    if (!data?.user_voice?.audio_url || !data?.bot_voice?.audio_url) {
+      throw new Error("Persistent voice audio is missing");
     }
 
+    appendVoiceMessage(messages, "user", {
+      audio_url: data.user_voice.audio_url,
+      transcript: data.user_voice.transcript || data.text,
+      correction: data.correction,
+    });
+
+    appendVoiceMessage(messages, "bot", {
+      audio_url: data.bot_voice.audio_url,
+      text: data.bot_voice.text || data.answer,
+      translation: data.bot_voice.translation || data.translation,
+    });
+
+    awaitingCorrectionRepeat = Boolean(data.requires_repeat);
+
     const { history } = getState();
-    const nextHistory = [
-      ...(history || []),
-      { role: "user", content: recognized },
-      { role: "assistant", content: data?.correction?.corrected
-          ? `${answer}\n\n${data.correction.corrected}${data.correction.explanation ? `\n\n${data.correction.explanation}` : ""}`
-          : answer },
-    ];
+    const userContent = {
+      type: "voice",
+      audio_url: data.user_voice.audio_url,
+      transcript: data.user_voice.transcript || data.text,
+    };
+    const botContent = {
+      type: "voice",
+      audio_url: data.bot_voice.audio_url,
+      text: data.bot_voice.text || data.answer,
+      translation: data.bot_voice.translation || data.translation,
+      correction: data.correction,
+      requires_repeat: data.requires_repeat,
+    };
 
-    setState({ history: nextHistory });
+    setState({
+      history: [...(history || []), { role: "user", content: userContent }, { role: "assistant", content: botContent }],
+    });
 
-    clearHeaderStatus();
-    await playAnswer(answer, bubble);
+    armInactivityTimer(wrapper);
   } catch (error) {
     console.error("voice error:", error);
     thinking.remove();
-
-    const lang = getState().profile?.interface_language || "en";
-    appendMessage(messages, "bot", t("chat.error_voice", null, lang));
-
+    appendMessage(messages, "bot", t("chat.error_voice", null, getState().profile?.interface_language || "en"));
     setHeaderStatus("chat.error_voice", "error");
     setTimeout(clearHeaderStatus, 3000);
   } finally {
@@ -577,39 +584,64 @@ async function sendPendingVoice(wrapper) {
   }
 }
 
-/* =========================================================
-   TTS
-   ========================================================= */
+function armInactivityTimer(wrapper) {
+  clearInactivityTimer();
+  if (!wrapper || !getState().voiceSession) return;
 
-async function playAnswer(text, bubble) {
-  setHeaderStatus("chat.hint_speaking", "speaking");
+  inactivityTimer = setTimeout(() => {
+    if (sending || mediaRecorder || pendingVoiceBlob || inactivityPromptShown) return;
 
-  const blob = await fetchTts(text);
+    inactivityPromptShown = true;
+    const messages = wrapper.querySelector("#chatMessages");
+    if (!messages) return;
 
-  if (!blob) {
-    clearHeaderStatus();
-    return;
-  }
+    const card = document.createElement("div");
+    card.className = "voice-inactivity";
+    card.innerHTML = `
+      <div class="voice-inactivity-text">${escapeHtml(getInactivityQuestion())}</div>
+      <div class="voice-inactivity-actions">
+        <button type="button" data-continue>${escapeHtml(t("chat.continue", null, getState().profile?.interface_language || "en"))}</button>
+        <button type="button" data-finish>${escapeHtml(t("chat.finish", null, getState().profile?.interface_language || "en"))}</button>
+      </div>`;
 
-  await playBlob(blob, bubble);
-  clearHeaderStatus();
+    messages.appendChild(card);
+    scrollToBottom(messages.closest(".chat-scroll"));
+
+    card.querySelector("[data-continue]")?.addEventListener("click", () => {
+      inactivityPromptShown = false;
+      card.remove();
+      armInactivityTimer(wrapper);
+    });
+
+    card.querySelector("[data-finish]")?.addEventListener("click", () => {
+      card.remove();
+      clearInactivityTimer();
+      setState({ voiceSession: null });
+      renderSessionChooser(wrapper);
+    });
+  }, 45000);
 }
 
-/* =========================================================
-   CLEANUP
-   ========================================================= */
+function getInactivityQuestion() {
+  const lang = getState().profile?.learning_language || "en";
+  const questions = {
+    en: "Shall we continue or finish for today?",
+    ru: "Продолжим или закончим на сегодня?",
+    sr: "Da li nastavljamo ili završavamo za danas?",
+    de: "Machen wir weiter oder beenden wir für heute?",
+    es: "¿Continuamos o terminamos por hoy?",
+    fr: "On continue ou on s’arrête pour aujourd’hui?",
+  };
+  return questions[lang] || questions.en;
+}
+
+function clearInactivityTimer() {
+  if (inactivityTimer) clearTimeout(inactivityTimer);
+  inactivityTimer = null;
+}
 
 function resetRecordingState() {
   stopRecordingTimer();
-
-  if (mediaRecorder && mediaRecorder.state !== "inactive") {
-    try {
-      mediaRecorder.stop();
-    } catch {
-      // ignore cleanup error
-    }
-  }
-
   releaseRecordingStream();
   mediaRecorder = null;
   recordingChunks = [];
@@ -618,22 +650,25 @@ function resetRecordingState() {
 
 function resetRecordingUI(wrapper) {
   const wrap = wrapper.querySelector("#voicePreviewWrap");
-  if (wrap) {
-    wrap.hidden = true;
-    wrap.innerHTML = "";
-  }
-
+  if (wrap) { wrap.hidden = true; wrap.innerHTML = ""; }
   setRecordingUI(wrapper, false);
   clearHeaderStatus();
 }
 
-/* =========================================================
-   UTILS
-   ========================================================= */
+async function playAnswer(text, bubble) {
+  setHeaderStatus("chat.hint_speaking", "speaking");
+  const blob = await fetchTts(text);
+  if (blob) await playBlob(blob, bubble);
+  clearHeaderStatus();
+}
 
 function scrollToBottom(scroll) {
   if (!scroll) return;
-  requestAnimationFrame(() => {
-    scroll.scrollTop = scroll.scrollHeight;
-  });
+  requestAnimationFrame(() => { scroll.scrollTop = scroll.scrollHeight; });
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
