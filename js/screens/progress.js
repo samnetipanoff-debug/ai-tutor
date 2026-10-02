@@ -118,7 +118,7 @@ function renderMistakes(mistakes, lang) {
                 <span style="color: var(--c-danger); text-decoration: line-through;">
                   ${escapeHtml(m.original_text || "")}
                 </span>
-                →
+                 / 
                 <span style="color: var(--c-success);">
                   ${escapeHtml(m.corrected_text || "")}
                 </span>
