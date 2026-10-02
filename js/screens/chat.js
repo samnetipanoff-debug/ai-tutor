@@ -281,12 +281,13 @@ function appendVoiceMessage(container, role, voice) {
     bubble.appendChild(translation);
   }
 
+  wrapper.appendChild(bubble);
+  container.appendChild(wrapper);
+
   if (voice.correction?.corrected) {
     appendCorrection(container, voice.correction);
   }
 
-  wrapper.appendChild(bubble);
-  container.appendChild(wrapper);
   scrollToBottom(container.closest(".chat-scroll"));
   return bubble;
 }
