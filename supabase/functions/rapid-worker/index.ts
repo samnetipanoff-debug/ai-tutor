@@ -61,6 +61,8 @@ Deno.serve(async (req) => {
     // Multipart: explicit voice message
     // --------------------------------------------------
 
+    const contentType = req.headers.get("content-type") || "";
+
     if (contentType.includes("multipart/form-data")) {
       const formData = await req.formData();
       const initData = String(formData.get("initData") || "");
