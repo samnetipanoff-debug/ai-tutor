@@ -8,7 +8,9 @@ import { hydrateIcons } from "../icons.js";
 
 const LANGUAGE_EMOJIS={ru:"🇷🇺",en:"🇬🇧",de:"🇩🇪",sr:"🇷🇸",es:"🇪🇸",fr:"🇫🇷"};
 const LEVELS=["a1","a2","b1","b2","c1"];
-const GOALS=["conversation","work","travel","study","culture"];\nconst LEVEL_EMOJIS={a1:"🌱",a2:"🌿",b1:"🌳",b2:"🔥",c1:"🏆"};\nconst GOAL_EMOJIS={conversation:"🗣",work:"💼",travel:"✈️",study:"📚",culture:"🎬"};
+const GOALS=["conversation","work","travel","study","culture"];
+const LEVEL_EMOJIS={a1:"🌱",a2:"🌿",b1:"🌳",b2:"🔥",c1:"🏆"};
+const GOAL_EMOJIS={conversation:"🗣",work:"💼",travel:"✈️",study:"📚",culture:"🎬"};
 
 export function renderProfile(){
   const {user,profile}=getState();
