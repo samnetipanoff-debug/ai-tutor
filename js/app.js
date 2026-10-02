@@ -48,7 +48,8 @@ const SCREENS = {
     render: renderMenu,
     titleKey: "menu.title",
     showBack: false,
-    showTabbar: false,     // в меню таббар не нужен
+    showTabbar: true,
+    tab: "chat",
   },
   chat: {
     render: renderChat,
