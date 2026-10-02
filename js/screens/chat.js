@@ -546,7 +546,7 @@ async function sendPendingVoice(wrapper) {
       correction: data.correction,
     });
 
-    appendVoiceMessage(messages, "bot", {
+    const botVoiceBubble = appendVoiceMessage(messages, "bot", {
       audio_url: data.bot_voice.audio_url,
       text: data.bot_voice.text || data.answer,
       translation: data.bot_voice.translation || data.translation,
@@ -573,6 +573,7 @@ async function sendPendingVoice(wrapper) {
       history: [...(history || []), { role: "user", content: userContent }, { role: "assistant", content: botContent }],
     });
 
+    await playPersistentVoice(data.bot_voice.audio_url, botVoiceBubble);
     armInactivityTimer(wrapper);
   } catch (error) {
     console.error("voice error:", error);
@@ -654,6 +655,21 @@ function resetRecordingUI(wrapper) {
   if (wrap) { wrap.hidden = true; wrap.innerHTML = ""; }
   setRecordingUI(wrapper, false);
   clearHeaderStatus();
+}
+
+async function playPersistentVoice(url, bubble) {
+  if (!url) return;
+  try {
+    setHeaderStatus("chat.hint_speaking", "speaking");
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Voice fetch failed: ${response.status}`);
+    const blob = await response.blob();
+    await playBlob(blob, bubble);
+  } catch (error) {
+    console.error("persistent voice playback error:", error);
+  } finally {
+    clearHeaderStatus();
+  }
 }
 
 async function playAnswer(text, bubble) {
