@@ -8,15 +8,12 @@ export async function verifyTelegramWebAppData(
   }
 
   const params = new URLSearchParams(initData);
-
   const receivedHash = params.get("hash");
 
   if (!receivedHash) {
     return null;
   }
 
-  // Telegram добавляет "signature" начиная с 2024 года.
-  // Оба поля — hash и signature — исключаются из dataCheckString.
   params.delete("hash");
   params.delete("signature");
 
@@ -27,7 +24,9 @@ export async function verifyTelegramWebAppData(
 
   const encoder = new TextEncoder();
 
-  const secretKey = await crypto.subtle.importKey(
+  // Telegram WebApp secret key:
+  // HMAC-SHA256(key = "WebAppData", message = bot token)
+  const webAppDataKey = await crypto.subtle.importKey(
     "raw",
     encoder.encode("WebAppData"),
     {
@@ -40,11 +39,11 @@ export async function verifyTelegramWebAppData(
 
   const secretKeyBytes = await crypto.subtle.sign(
     "HMAC",
-    secretKey,
+    webAppDataKey,
     encoder.encode(TELEGRAM_BOT_TOKEN),
   );
 
-  const botTokenKey = await crypto.subtle.importKey(
+  const secretKey = await crypto.subtle.importKey(
     "raw",
     secretKeyBytes,
     {
@@ -57,7 +56,7 @@ export async function verifyTelegramWebAppData(
 
   const signature = await crypto.subtle.sign(
     "HMAC",
-    botTokenKey,
+    secretKey,
     encoder.encode(dataCheckString),
   );
 
@@ -71,7 +70,7 @@ export async function verifyTelegramWebAppData(
     return null;
   }
 
-  // Проверка свежести initData (не старше 24 часов)
+  // Проверка свежести initData — не старше 24 часов.
   const authDate = Number(params.get("auth_date") || 0);
 
   if (!authDate || Date.now() / 1000 - authDate > 86400) {
