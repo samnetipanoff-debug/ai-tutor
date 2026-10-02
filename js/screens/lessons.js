@@ -1,4 +1,4 @@
-/* LESSONS SCREEN */
+/* LESSONS — rebuilt component structure */
 import telegram from "../telegram.js";
 import { api } from "../api.js";
 import { getState, setState } from "../state.js";
@@ -6,7 +6,14 @@ import { t } from "../i18n.js";
 import { navigate, showToast, showLoader, hideLoader } from "../app.js";
 import { hydrateIcons } from "../icons.js";
 
-const TOPICS=[{code:"work",emoji:"💼"},{code:"food",emoji:"🍽"},{code:"travel",emoji:"✈️"},{code:"family",emoji:"👨‍👩‍👧"},{code:"hobby",emoji:"🎨"},{code:"shopping",emoji:"🛍"}];
+const TOPICS=[
+  {code:"work",emoji:"💼",icon:"briefcase"},
+  {code:"food",emoji:"🍽",icon:"food"},
+  {code:"travel",emoji:"✈️",icon:"globe"},
+  {code:"family",emoji:"👨‍👩‍👧",icon:"user"},
+  {code:"hobby",emoji:"🎨",icon:"sparkles"},
+  {code:"shopping",emoji:"🛍",icon:"book"}
+];
 
 export function renderLessons(){
   const {profile,currentLesson}=getState();
@@ -44,8 +51,11 @@ function renderActiveLesson(lesson,lang){
     <div class="lessons-section-title">${t("lessons.progress_label",null,lang)}</div>
     <button class="lessons-item is-active" type="button" data-resume-lesson>
       <span class="lessons-item-emoji">📖</span>
-      <div class="lessons-item-body"><div class="lessons-item-title">${escapeHtml(topicLabel)} · ${escapeHtml(lesson.current_word||"")}</div><div class="lessons-item-subtitle">${escapeHtml(stepLabel)}</div></div>
-      <span class="lessons-item-arrow icon" data-icon="arrowRight"></span>
+      <div class="lessons-item-body">
+        <div class="lessons-item-title">${escapeHtml(topicLabel)}</div>
+        <div class="lessons-item-subtitle">${escapeHtml(lesson.current_word||"")} · ${escapeHtml(stepLabel)}</div>
+      </div>
+      <span class="lessons-item-arrow icon" data-icon="arrowRight" aria-hidden="true"></span>
     </button>
     <div class="lessons-start"><div class="lessons-section-title">${t("lessons.start_new",null,lang)}</div></div>`;
 }
@@ -55,8 +65,10 @@ function renderTopicItem(topic,lang){
   return `
     <button class="lessons-item" type="button" data-topic="${topic.code}">
       <span class="lessons-item-emoji">${topic.emoji}</span>
-      <div class="lessons-item-body"><div class="lessons-item-title">${escapeHtml(label)}</div></div>
-      <span class="lessons-item-arrow icon" data-icon="arrowRight"></span>
+      <div class="lessons-item-body">
+        <div class="lessons-item-title">${escapeHtml(label)}</div>
+      </div>
+      <span class="lessons-item-arrow icon" data-icon="arrowRight" aria-hidden="true"></span>
     </button>`;
 }
 
