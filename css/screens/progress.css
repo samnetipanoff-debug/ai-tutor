@@ -1,15 +1,2 @@
-/* PROGRESS — dashboard */
-.progress{height:100%;display:flex;flex-direction:column}
-.progress-scroll{flex:1;overflow:auto;padding:28px 20px 34px}
-.progress-stats{grid-template-columns:1fr 1fr;gap:12px;margin-bottom:30px}
-.progress-stat{min-height:142px!important;padding:18px!important;border-radius:24px!important;background:linear-gradient(145deg,rgba(255,255,255,.055),rgba(255,255,255,.015))!important;border:1px solid rgba(255,255,255,.09)!important;box-shadow:0 12px 30px rgba(0,0,0,.15)!important}
-.progress-stat:nth-child(4){background:linear-gradient(145deg,rgba(139,226,139,.09),rgba(255,255,255,.015))!important}
-.progress-stat-icon{width:42px!important;height:42px!important;border-radius:15px!important}
-.progress-stat-value{font-size:34px!important}
-.progress-stat-label{font-size:12px!important}
-.progress-section{margin-bottom:28px!important}
-.progress-section-title{font-size:11px!important;letter-spacing:1.2px!important;margin-bottom:13px!important}
-.progress-list{gap:8px}
-.progress-list-item{padding:16px!important;border-radius:19px!important;background:rgba(255,255,255,.025)!important;border:1px solid rgba(255,255,255,.08)!important}
-.progress-list-item-main{font-size:14px!important}
-.progress-empty{padding:25px 18px!important;border-radius:19px!important;background:rgba(255,255,255,.025)!important}
+/* PROGRESS — clear dashboard */
+.progress{height:100%;display:flex;flex-direction:column;background:transparent}.progress-scroll{flex:1;overflow:auto;padding:24px 18px 34px}.progress-stats{grid-template-columns:1fr 1fr;gap:13px;margin-bottom:24px}.progress-stat{min-height:136px!important;padding:17px!important;border-radius:21px!important;background:var(--c-surface)!important;border:1px solid var(--c-border-2)!important;box-shadow:var(--sh-sm)!important}.progress-stat:nth-child(4){background:linear-gradient(145deg,#203849,#1B293C)!important}.progress-stat-icon{width:40px!important;height:40px!important;border-radius:13px!important;background:#29405C!important}.progress-stat-value{font-size:32px!important}.progress-stat-label{color:var(--c-text-3)!important}.progress-section{margin-bottom:23px!important}.progress-section-title{font-size:11px!important;letter-spacing:1.1px!important;color:var(--c-text-4)!important;margin-bottom:11px!important}.progress-list{gap:9px}.progress-list-item{padding:15px!important;border-radius:17px!important;background:var(--c-surface)!important;border:1px solid var(--c-border)!important}.progress-empty{padding:23px 17px!important;border-radius:17px!important;background:var(--c-surface)!important;border:1px solid var(--c-border)!important}
