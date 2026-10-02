@@ -148,60 +148,90 @@
 }
 
 /* =========================================================
-   TABBAR — 4 иконки с подписями
+   TABBAR — PREMIUM BOTTOM NAVIGATION
    ========================================================= */
 
 .tabbar {
   flex: 0 0 auto;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
 
   padding:
-    var(--sp-2)
-    var(--sp-3)
-    calc(var(--sp-2) + var(--safe-bottom));
+    8px
+    12px
+    calc(8px + var(--safe-bottom));
 
-  background: color-mix(in srgb, var(--c-bg) 94%, transparent);
-  border-top: 1px solid var(--c-border);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  z-index: 10;
+  background: rgba(10, 11, 13, 0.94);
+  border-top: 1px solid rgba(255, 255, 255, 0.055);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+  z-index: 20;
 }
 
 .tabbar-item {
+  position: relative;
+  min-width: 0;
+  min-height: 54px;
+
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 4px;
 
-  padding: 8px 4px 6px;
-  border-radius: var(--r-md);
-  color: var(--c-text-3);
+  padding: 7px 4px;
+  border-radius: 16px;
+  color: var(--c-text-4);
 
   transition:
     color var(--t-fast),
-    background var(--t-fast);
+    background var(--t-fast),
+    transform var(--t-fast);
+}
+
+.tabbar-item:active {
+  transform: scale(0.94);
 }
 
 .tabbar-item:hover {
   color: var(--c-text-2);
+  background: rgba(255, 255, 255, 0.025);
 }
 
 .tabbar-item .icon {
-  width: 22px;
-  height: 22px;
-  transition: color var(--t-fast), transform var(--t-fast);
+  width: 21px;
+  height: 21px;
+  transition: transform var(--t-mid), color var(--t-fast);
 }
 
 .tabbar-item .tabbar-label {
   font-size: 10px;
+  line-height: 1;
   font-weight: 500;
-  letter-spacing: 0.2px;
+  letter-spacing: 0.1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .tabbar-item.is-active {
   color: var(--c-primary);
+  background: var(--c-primary-soft-2);
+}
+
+.tabbar-item.is-active::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 22px;
+  height: 2px;
+  border-radius: 999px;
+  transform: translateX(-50%);
+  background: var(--c-primary);
+  box-shadow: 0 0 14px rgba(139, 226, 139, 0.35);
 }
 
 .tabbar-item.is-active .icon {
@@ -210,6 +240,17 @@
 
 .tabbar-item.is-active .tabbar-label {
   font-weight: 600;
+}
+
+@media (max-width: 360px) {
+  .tabbar {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .tabbar-item {
+    min-height: 50px;
+  }
 }
 
 /* =========================================================
