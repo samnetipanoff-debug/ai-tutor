@@ -3,12 +3,35 @@ import { SUPABASE_URL, SERVICE_ROLE_KEY } from "./config.ts";
 const BUCKET = "voice-messages";
 
 async function ensureBucket() {
+  const headers = {
+    apikey: SERVICE_ROLE_KEY,
+    Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+  };
+
+  const existing = await fetch(`${SUPABASE_URL}/storage/v1/bucket/${BUCKET}`, {
+    method: "GET",
+    headers,
+  });
+
+  if (existing.ok) return;
+
+  if (existing.status !== 404) {
+    throw new Error(`Storage bucket lookup failed: ${existing.status}`);
+  }
+
   const response = await fetch(`${SUPABASE_URL}/storage/v1/bucket`, {
     method: "POST",
-    headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ id: BUCKET, name: BUCKET, public: false, file_size_limit: 10485760, allowed_mime_types: ["audio/*"] }),
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      id: BUCKET,
+      name: BUCKET,
+      public: false,
+      file_size_limit: 10485760,
+      allowed_mime_types: ["audio/*"],
+    }),
   });
-  if (!response.ok && response.status !== 409) {
+
+  if (!response.ok && response.status !== 409 && response.status !== 400) {
     throw new Error(`Storage bucket error: ${response.status} ${await response.text().catch(() => "")}`);
   }
 }
