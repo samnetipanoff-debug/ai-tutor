@@ -275,7 +275,10 @@ bootstrap();
    ========================================================= */
 
 function isOnboardedFromProfile(profile) {
-  return profile?.onboarding_step === "done";
+  return (
+    profile?.onboarding_step === "done" ||
+    profile?.onboarding_step === "completed"
+  );
 }
 
 /* =========================================================
