@@ -29,6 +29,7 @@ const screenEl = document.getElementById("screen");
 const headerTitle = document.getElementById("headerTitle");
 const headerStatus = document.getElementById("headerStatus");
 const headerBack = document.getElementById("headerBack");
+const headerClose = document.getElementById("headerClose");
 const tabbarEl = document.getElementById("tabbar");
 const toastEl = document.getElementById("toast");
 const loaderEl = document.getElementById("loader");
@@ -218,6 +219,11 @@ function bindHeader() {
   headerBack.addEventListener("click", () => {
     telegram.haptic.impact("light");
     navigate("menu");
+  });
+
+  headerClose.addEventListener("click", () => {
+    telegram.haptic.impact("light");
+    telegram.close();
   });
 }
 
