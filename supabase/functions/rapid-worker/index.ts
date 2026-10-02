@@ -114,21 +114,27 @@ Deno.serve(async (req) => {
       ]);
 
       let spokenAnswer = answer;
+      let displayAnswer = answer;
       let correction = null;
+      let requiresRepeat = false;
 
-      if (mistake?.has_mistake) {
+      if (mistake?.has_mistake && mistake.corrected_text) {
         correction = {
           original: transcription,
-          corrected: mistake.corrected_text || "",
+          corrected: mistake.corrected_text,
           explanation: mistake.explanation || "",
         };
-        spokenAnswer = mistake.corrected_text
-          ? `Please repeat it correctly: ${mistake.corrected_text}`
-          : answer;
+
+        // During a correction turn the audio must contain ONLY the correct
+        // learning-language phrase. The instruction to repeat is text/meta,
+        // not something that should be spoken.
+        spokenAnswer = mistake.corrected_text;
+        displayAnswer = `Please repeat: ${mistake.corrected_text}`;
+        requiresRepeat = true;
       }
 
       const translation = await translateTutorAnswer(
-        spokenAnswer,
+        displayAnswer,
         profile.learning_language,
         profile.interface_language || "en",
       );
@@ -141,10 +147,11 @@ Deno.serve(async (req) => {
       const assistantMessage = JSON.stringify({
         type: "voice",
         audio_path: botAudioPath,
-        text: spokenAnswer,
+        text: displayAnswer,
+        speech_text: spokenAnswer,
         translation,
         correction,
-        requires_repeat: Boolean(correction),
+        requires_repeat: requiresRepeat,
       });
 
       await saveMessage(telegramUser.id, conversation.id, "assistant", assistantMessage);
@@ -161,12 +168,13 @@ Deno.serve(async (req) => {
       return jsonResponse({
         ok: true,
         text: transcription,
-        answer: spokenAnswer,
+        answer: displayAnswer,
+        speech_text: spokenAnswer,
         translation,
         correction,
-        requires_repeat: Boolean(correction),
+        requires_repeat: requiresRepeat,
         user_voice: { audio_url: userAudioUrl, transcript: transcription },
-        bot_voice: { audio_url: botAudioUrl, text: spokenAnswer, translation },
+        bot_voice: { audio_url: botAudioUrl, text: displayAnswer, speech_text: spokenAnswer, translation },
       }, 200, CORS_HEADERS);
     }
 
