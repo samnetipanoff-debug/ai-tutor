@@ -21,7 +21,7 @@ import { getProgress } from "./db/progress-read.ts";
 import { askOpenRouter } from "./ai/tutor.ts";
 import { analyzeStudentMessage } from "./ai/mistake-analyzer.ts";
 import { translateTutorAnswer } from "./ai/translate.ts";
-import { uploadVoice } from "./storage.ts";
+import { uploadVoice, signVoice } from "./storage.ts";
 
 import { transcribeAudio } from "./voice/whisper.ts";
 import { generateSpeech } from "./voice/tts.ts";
@@ -151,8 +151,8 @@ Deno.serve(async (req) => {
         console.error("Progress update failed:", error);
       }
 
-      const userAudioUrl = await (await import("./storage.ts")).signVoice(userAudioPath);
-      const botAudioUrl = await (await import("./storage.ts")).signVoice(botAudioPath);
+      const userAudioUrl = await signVoice(userAudioPath);
+      const botAudioUrl = await signVoice(botAudioPath);
 
       return jsonResponse({
         ok: true,
