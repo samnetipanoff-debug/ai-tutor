@@ -288,10 +288,6 @@ function isOnboardedFromProfile(profile) {
   );
 }
 
-/* =========================================================
-   RUN
-   ========================================================= */
-
 // Экспортируем хелперы, чтобы экраны могли их использовать
 export {
   telegram,
@@ -303,6 +299,3 @@ export {
   isOnboarded,
   getInterfaceLanguage,
 };
-
-// Автозапуск
-document.addEventListener("DOMContentLoaded", bootstrap);
