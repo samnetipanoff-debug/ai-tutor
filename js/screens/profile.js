@@ -8,7 +8,7 @@ import { hydrateIcons } from "../icons.js";
 
 const LANGUAGE_EMOJIS={ru:"🇷🇺",en:"🇬🇧",de:"🇩🇪",sr:"🇷🇸",es:"🇪🇸",fr:"🇫🇷"};
 const LEVELS=["a1","a2","b1","b2","c1"];
-const GOALS=["conversation","work","travel","study","culture"];
+const GOALS=["conversation","work","travel","study","culture"];\nconst LEVEL_EMOJIS={a1:"🌱",a2:"🌿",b1:"🌳",b2:"🔥",c1:"🏆"};\nconst GOAL_EMOJIS={conversation:"🗣",work:"💼",travel:"✈️",study:"📚",culture:"🎬"};
 
 export function renderProfile(){
   const {user,profile}=getState();
@@ -52,8 +52,8 @@ function openSheet(field){
   if(field==="interface_language"||field==="native_language"||field==="learning_language"){
     title=t(`profile.${field}`,null,lang);
     options=getSupportedLanguages().map((code)=>({value:code,emoji:LANGUAGE_EMOJIS[code]||"🌐",label:t(`languages.${code}`,null,lang)}));
-  }else if(field==="level"){title=t("profile.level",null,lang);options=LEVELS.map((code)=>({value:code,emoji:"•",label:t(`onboarding.levels.${code}`,null,lang)}));
-  }else if(field==="goal"){title=t("profile.goal",null,lang);options=GOALS.map((code)=>({value:code,emoji:"•",label:t(`onboarding.goals.${code}`,null,lang)}));
+  }else if(field==="level"){title=t("profile.level",null,lang);options=LEVELS.map((code)=>({value:code,emoji:LEVEL_EMOJIS[code],label:t(`onboarding.levels.${code}`,null,lang)}));
+  }else if(field==="goal"){title=t("profile.goal",null,lang);options=GOALS.map((code)=>({value:code,emoji:GOAL_EMOJIS[code],label:t(`onboarding.goals.${code}`,null,lang)}));
   }else return;
   const backdrop=document.createElement("div"); backdrop.className="modal-backdrop"; const current=profile?.[field];
   backdrop.innerHTML=`
