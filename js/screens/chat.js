@@ -87,6 +87,15 @@ function renderSessionChooser(wrapper) {
   wrapper.querySelector('[data-session="free"]')?.addEventListener("click", () => {
     beginSession(wrapper, { mode: "free", lessonTopic: "" });
   });
+
+  if (!currentLesson) {
+    api.getCurrentLesson().then((result) => {
+      if (result?.lesson) {
+        setState({ currentLesson: result.lesson });
+        renderSessionChooser(wrapper);
+      }
+    }).catch(() => {});
+  }
 }
 
 function showLessonPicker(wrapper) {
