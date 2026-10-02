@@ -2,6 +2,7 @@ import {
   SUPABASE_URL,
   SERVICE_ROLE_KEY,
 } from "../config.ts";
+import { signVoice } from "../storage.ts";
 
 export async function saveMessage(
   telegramId: number,
