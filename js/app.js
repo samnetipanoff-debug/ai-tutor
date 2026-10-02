@@ -284,7 +284,7 @@ async function bootstrap() {
 }
 
 function renderBootMessage(message) {
-  screenEl.innerHTML = \`<div class="boot-message"><div class="boot-icon">AI</div><h1>AI Tutor</h1><p>\${message}</p><button class="btn btn-primary btn-block" type="button" id="bootRetry">Try again</button></div>\`;
+  screenEl.innerHTML = `<div class="boot-message"><div class="boot-icon">AI</div><h1>AI Tutor</h1><p>${message}</p><button class="btn btn-primary btn-block" type="button" id="bootRetry">Try again</button></div>`;
   screenEl.querySelector("#bootRetry")?.addEventListener("click", () => location.reload());
 }
 
