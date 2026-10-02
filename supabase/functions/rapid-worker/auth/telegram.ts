@@ -66,8 +66,16 @@ export async function verifyTelegramWebAppData(
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
 
-  if (calculatedHash !== receivedHash) {
-    return null;
+if (calculatedHash !== receivedHash) {
+  console.error("Telegram auth: HASH_MISMATCH", {
+    hasInitData: Boolean(initData),
+    initDataLength: initData.length,
+    hasHash: Boolean(receivedHash),
+    hasUser: Boolean(params.get("user")),
+    hasAuthDate: Boolean(params.get("auth_date")),
+  });
+
+  return null;
   }
 
   // Проверка свежести initData — не старше 24 часов.
