@@ -1,8 +1,7 @@
 /* =========================================================
-   CHAT SCREEN — text + auto voice
+   CHAT SCREEN — text + explicit voice messages
    ========================================================= */
 
-import telegram from "../telegram.js";
 import { api } from "../api.js";
 import { getState, setState } from "../state.js";
 import { t } from "../i18n.js";
@@ -17,20 +16,27 @@ import {
   playBlob,
   stopCurrent,
 } from "../audio.js";
-import VoiceEngine from "../voice-engine.js";
 
 /* =========================================================
    LOCAL STATE
    ========================================================= */
 
 let sending = false;
-let lastVoiceBlobSentAt = 0;
+let mediaRecorder = null;
+let recordingStream = null;
+let recordingChunks = [];
+let recordingStartedAt = 0;
+let recordingTimer = null;
+let pendingVoiceBlob = null;
+let pendingVoiceMime = "audio/webm";
 
 /* =========================================================
    RENDER
    ========================================================= */
 
 export function renderChat() {
+  resetRecordingState();
+
   const { profile, history } = getState();
   const lang = profile?.interface_language || "en";
 
@@ -41,6 +47,8 @@ export function renderChat() {
     <div class="chat-scroll" id="chatScroll">
       <div class="chat-messages" id="chatMessages"></div>
     </div>
+
+    <div class="voice-preview-wrap" id="voicePreviewWrap" hidden></div>
 
     <div class="chat-input">
       <input
@@ -54,9 +62,17 @@ export function renderChat() {
       />
       <button
         class="chat-input-btn"
+        id="chatMic"
+        type="button"
+        aria-label="${t("chat.record_voice", null, lang)}"
+      >
+        <span class="icon" data-icon="mic"></span>
+      </button>
+      <button
+        class="chat-input-btn"
         id="chatSend"
         type="button"
-        aria-label="Send"
+        aria-label="${t("chat.send", null, lang)}"
       >
         <span class="icon" data-icon="check"></span>
       </button>
@@ -68,16 +84,15 @@ export function renderChat() {
   const messages = wrapper.querySelector("#chatMessages");
   const input = wrapper.querySelector("#chatInput");
   const sendBtn = wrapper.querySelector("#chatSend");
+  const micBtn = wrapper.querySelector("#chatMic");
   const scroll = wrapper.querySelector("#chatScroll");
 
-  // История
-  renderHistory(messages, history, lang);
+  renderHistory(messages, history);
 
   if (!history || history.length === 0) {
     renderEmpty(messages, lang);
   }
 
-  // Текстовый ввод
   sendBtn.addEventListener("click", () => {
     sendTextMessage(input.value, messages, input, sendBtn);
   });
@@ -89,14 +104,19 @@ export function renderChat() {
     }
   });
 
+  micBtn.addEventListener("click", () => {
+    if (mediaRecorder?.state === "recording") {
+      stopRecording();
+    } else {
+      startRecording(wrapper);
+    }
+  });
+
   scrollToBottom(scroll);
 
   if (window.innerWidth > 640) {
     input.focus();
   }
-
-  // Голосовой движок
-  startVoiceEngine(messages);
 
   return wrapper;
 }
@@ -105,7 +125,7 @@ export function renderChat() {
    HISTORY / EMPTY
    ========================================================= */
 
-function renderHistory(messages, history, lang) {
+function renderHistory(messages, history) {
   if (!Array.isArray(history)) return;
 
   for (const m of history) {
@@ -119,6 +139,7 @@ function renderEmpty(messages, lang) {
   el.className = "chat-empty";
   el.innerHTML = `
     <div class="chat-empty-emoji">🎙</div>
+    <div class="chat-empty-title">${t("chat.voice_title", null, lang)}</div>
     <div class="text-sm">${t("chat.hint_microphone", null, lang)}</div>
   `;
   messages.appendChild(el);
@@ -129,7 +150,6 @@ function renderEmpty(messages, lang) {
    ========================================================= */
 
 function appendMessage(container, role, text) {
-  // удаляем empty, если есть
   const empty = container.querySelector(".chat-empty");
   if (empty) empty.remove();
 
@@ -147,6 +167,43 @@ function appendMessage(container, role, text) {
   if (scroll) scrollToBottom(scroll);
 
   return bubble;
+}
+
+function appendCorrection(container, correction) {
+  if (!correction?.corrected) return;
+
+  const wrapper = document.createElement("div");
+  wrapper.className = "msg is-bot";
+
+  const card = document.createElement("div");
+  card.className = "msg-correction";
+
+  const label = document.createElement("div");
+  label.className = "msg-correction-label";
+  label.textContent = t(
+    "chat.correction",
+    null,
+    getState().profile?.interface_language || "en",
+  );
+
+  const corrected = document.createElement("div");
+  corrected.className = "msg-correction-text";
+  corrected.textContent = correction.corrected;
+
+  card.append(label, corrected);
+
+  if (correction.explanation) {
+    const explanation = document.createElement("div");
+    explanation.className = "msg-correction-explanation";
+    explanation.textContent = correction.explanation;
+    card.appendChild(explanation);
+  }
+
+  wrapper.appendChild(card);
+  container.appendChild(wrapper);
+
+  const scroll = container.closest(".chat-scroll");
+  if (scroll) scrollToBottom(scroll);
 }
 
 function appendThinking(container) {
@@ -183,7 +240,6 @@ async function sendTextMessage(raw, messages, input, sendBtn) {
   input.value = "";
 
   stopCurrent();
-  pauseVoiceEngine();
 
   appendMessage(messages, "user", text);
 
@@ -209,7 +265,6 @@ async function sendTextMessage(raw, messages, input, sendBtn) {
     });
 
     clearHeaderStatus();
-
     await playAnswer(data.answer, bubble);
   } catch (error) {
     console.error("send error:", error);
@@ -223,71 +278,290 @@ async function sendTextMessage(raw, messages, input, sendBtn) {
   } finally {
     sending = false;
     sendBtn.disabled = false;
-    resumeVoiceEngine();
   }
 }
 
 /* =========================================================
-   VOICE → BACKEND
+   EXPLICIT VOICE RECORDING
    ========================================================= */
 
-async function handleVoiceBlob(blob, mimeType) {
-  if (sending) return;
-  if (!blob || blob.size === 0) return;
+async function startRecording(wrapper) {
+  if (sending || mediaRecorder) return;
 
-  // защита от дубликатов
-  const now = Date.now();
-  if (now - lastVoiceBlobSentAt < 800) return;
-  lastVoiceBlobSentAt = now;
+  const lang = getState().profile?.interface_language || "en";
 
-  sending = true;
-  const messages = document.getElementById("chatMessages");
-  if (!messages) {
-    sending = false;
+  if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+    showToast(t("chat.error_voice", null, lang), "error");
     return;
   }
 
+  try {
+    recordingStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+    const mimeType = getRecordingMimeType();
+    mediaRecorder = new MediaRecorder(
+      recordingStream,
+      mimeType ? { mimeType } : undefined,
+    );
+
+    recordingChunks = [];
+    recordingStartedAt = Date.now();
+    pendingVoiceBlob = null;
+    pendingVoiceMime = mediaRecorder.mimeType || mimeType || "audio/webm";
+
+    mediaRecorder.addEventListener("dataavailable", (event) => {
+      if (event.data?.size) recordingChunks.push(event.data);
+    });
+
+    mediaRecorder.addEventListener("stop", () => {
+      const blob = new Blob(recordingChunks, {
+        type: pendingVoiceMime,
+      });
+
+      releaseRecordingStream();
+      mediaRecorder = null;
+      recordingChunks = [];
+
+      if (!blob.size) {
+        resetRecordingUI(wrapper);
+        showToast(t("chat.error_voice", null, lang), "error");
+        return;
+      }
+
+      pendingVoiceBlob = blob;
+      showVoicePreview(wrapper, blob);
+    });
+
+    mediaRecorder.start(250);
+    setRecordingUI(wrapper, true);
+    setHeaderStatus("chat.recording", "listening");
+  } catch (error) {
+    console.error("microphone error:", error);
+    releaseRecordingStream();
+    mediaRecorder = null;
+
+    showToast(
+      t("chat.hint_microphone_denied", null, lang),
+      "error",
+    );
+  }
+}
+
+function stopRecording() {
+  if (!mediaRecorder || mediaRecorder.state !== "recording") return;
+
+  mediaRecorder.stop();
+  setHeaderStatus(
+    "chat.processing_recording",
+    "thinking",
+  );
+}
+
+function getRecordingMimeType() {
+  const candidates = [
+    "audio/webm;codecs=opus",
+    "audio/webm",
+    "audio/mp4",
+    "audio/ogg;codecs=opus",
+  ];
+
+  return candidates.find((type) => {
+    try {
+      return MediaRecorder.isTypeSupported(type);
+    } catch {
+      return false;
+    }
+  }) || "";
+}
+
+function releaseRecordingStream() {
+  if (!recordingStream) return;
+  for (const track of recordingStream.getTracks()) {
+    track.stop();
+  }
+  recordingStream = null;
+}
+
+function setRecordingUI(wrapper, active) {
+  const micBtn = wrapper.querySelector("#chatMic");
+  const input = wrapper.querySelector("#chatInput");
+  const sendBtn = wrapper.querySelector("#chatSend");
+
+  if (!micBtn) return;
+
+  if (active) {
+    micBtn.classList.add("is-recording");
+    micBtn.innerHTML = '<span class="icon" data-icon="stop"></span>';
+    micBtn.setAttribute(
+      "aria-label",
+      t(
+        "chat.stop_recording",
+        null,
+        getState().profile?.interface_language || "en",
+      ),
+    );
+    hydrateIcons(micBtn);
+    input.disabled = true;
+    sendBtn.disabled = true;
+    startRecordingTimer(wrapper);
+  } else {
+    micBtn.classList.remove("is-recording");
+    micBtn.innerHTML = '<span class="icon" data-icon="mic"></span>';
+    micBtn.setAttribute(
+      "aria-label",
+      t(
+        "chat.record_voice",
+        null,
+        getState().profile?.interface_language || "en",
+      ),
+    );
+    hydrateIcons(micBtn);
+    input.disabled = false;
+    sendBtn.disabled = false;
+    stopRecordingTimer(wrapper);
+  }
+}
+
+function startRecordingTimer(wrapper) {
+  stopRecordingTimer(wrapper);
+  const micBtn = wrapper.querySelector("#chatMic");
+  if (!micBtn) return;
+
+  const update = () => {
+    const seconds = Math.floor((Date.now() - recordingStartedAt) / 1000);
+    micBtn.innerHTML = `
+      <span class="voice-recording-time">${formatDuration(seconds)}</span>
+    `;
+  };
+
+  update();
+  recordingTimer = setInterval(update, 250);
+}
+
+function stopRecordingTimer() {
+  if (recordingTimer) clearInterval(recordingTimer);
+  recordingTimer = null;
+}
+
+function formatDuration(seconds) {
+  const min = Math.floor(seconds / 60);
+  const sec = seconds % 60;
+  return `${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+}
+
+/* =========================================================
+   VOICE PREVIEW / SEND
+   ========================================================= */
+
+function showVoicePreview(wrapper, blob) {
+  setRecordingUI(wrapper, false);
+
+  const wrap = wrapper.querySelector("#voicePreviewWrap");
+  if (!wrap) return;
+
+  const lang = getState().profile?.interface_language || "en";
+  const duration = Math.max(
+    1,
+    Math.round((Date.now() - recordingStartedAt) / 1000),
+  );
+
+  wrap.hidden = false;
+  wrap.innerHTML = `
+    <div class="voice-preview">
+      <div class="voice-preview-icon">
+        <span class="icon" data-icon="mic"></span>
+      </div>
+      <div class="voice-preview-info">
+        <strong>${t("chat.voice_ready", null, lang)}</strong>
+        <span>${formatDuration(duration)}</span>
+      </div>
+      <div class="voice-preview-actions">
+        <button class="voice-preview-cancel" type="button">
+          ${t("chat.delete_voice", null, lang)}
+        </button>
+        <button class="voice-preview-send" type="button">
+          <span class="icon" data-icon="check"></span>
+          <span>${t("chat.send_voice", null, lang)}</span>
+        </button>
+      </div>
+    </div>
+  `;
+
+  hydrateIcons(wrap);
+
+  wrap.querySelector(".voice-preview-cancel")?.addEventListener(
+    "click",
+    () => {
+      pendingVoiceBlob = null;
+      wrap.hidden = true;
+      wrap.innerHTML = "";
+      clearHeaderStatus();
+    },
+  );
+
+  wrap.querySelector(".voice-preview-send")?.addEventListener(
+    "click",
+    () => {
+      sendPendingVoice(wrapper);
+    },
+  );
+
+  clearHeaderStatus();
+}
+
+async function sendPendingVoice(wrapper) {
+  if (!pendingVoiceBlob || sending) return;
+
+  const blob = pendingVoiceBlob;
+  const mimeType = pendingVoiceMime;
+  pendingVoiceBlob = null;
+
+  const wrap = wrapper.querySelector("#voicePreviewWrap");
+  if (wrap) {
+    wrap.hidden = true;
+    wrap.innerHTML = "";
+  }
+
+  const messages = wrapper.querySelector("#chatMessages");
+  if (!messages) return;
+
+  sending = true;
+  setHeaderStatus("chat.hint_thinking", "thinking");
   stopCurrent();
 
-  const engine = getState().voiceEngine;
-  if (engine) engine.notifyFetchStart();
-
   const thinking = appendThinking(messages);
-
-  setHeaderStatus("chat.hint_thinking", "thinking");
 
   try {
     const data = await api.sendVoice(blob, mimeType);
 
     thinking.remove();
 
-    // Если бэк отдаёт единый { text, answer } — используем оба.
-    // Если только { text } — отправляем текст в LLM вторым запросом.
-    let recognized = data?.text || "";
-    let answer = data?.answer || "";
+    const recognized = (data?.text || "").trim();
+    const answer = (data?.answer || "").trim();
 
     if (!recognized) throw new Error("No transcription");
+    if (!answer) throw new Error("No answer from voice pipeline");
 
     appendMessage(messages, "user", recognized);
 
-    if (!answer) {
-      throw new Error("No answer from voice pipeline");
-    }
-
     const bubble = appendMessage(messages, "bot", answer);
 
+    if (data?.correction?.corrected) {
+      appendCorrection(messages, data.correction);
+    }
+
     const { history } = getState();
-    setState({
-      history: [
-        ...(history || []),
-        { role: "user", content: recognized },
-        { role: "assistant", content: answer },
-      ],
-    });
+    const nextHistory = [
+      ...(history || []),
+      { role: "user", content: recognized },
+      { role: "assistant", content: data?.correction?.corrected
+          ? `${answer}\n\n${data.correction.corrected}${data.correction.explanation ? `\n\n${data.correction.explanation}` : ""}`
+          : answer },
+    ];
 
-    if (engine) engine.notifyFetchEnd();
+    setState({ history: nextHistory });
+
     clearHeaderStatus();
-
     await playAnswer(answer, bubble);
   } catch (error) {
     console.error("voice error:", error);
@@ -298,8 +572,6 @@ async function handleVoiceBlob(blob, mimeType) {
 
     setHeaderStatus("chat.error_voice", "error");
     setTimeout(clearHeaderStatus, 3000);
-
-    if (engine) engine.notifyFetchEnd();
   } finally {
     sending = false;
   }
@@ -320,85 +592,39 @@ async function playAnswer(text, bubble) {
   }
 
   await playBlob(blob, bubble);
-
   clearHeaderStatus();
 }
 
 /* =========================================================
-   VOICE ENGINE
+   CLEANUP
    ========================================================= */
 
-function startVoiceEngine(messages) {
-  // если движок уже создан — просто переиспользуем
-  let engine = getState().voiceEngine;
+function resetRecordingState() {
+  stopRecordingTimer();
 
-  if (engine) return;
+  if (mediaRecorder && mediaRecorder.state !== "inactive") {
+    try {
+      mediaRecorder.stop();
+    } catch {
+      // ignore cleanup error
+    }
+  }
 
-  engine = new VoiceEngine({
-    onSpeechStart: () => {
-      // авто-запись стартовала
-    },
-
-    onSpeechEnd: (blob, mimeType) => {
-      handleVoiceBlob(blob, mimeType);
-    },
-
-    onBargeIn: () => {
-      // пользователь перебил ИИ — глушим TTS
-      stopCurrent();
-    },
-
-    onStatusChange: (status) => {
-      switch (status) {
-        case "listening":
-          setHeaderStatus("chat.hint_listening", "listening");
-          break;
-        case "recording":
-          setHeaderStatus("chat.hint_recording", "listening");
-          break;
-        case "thinking":
-          setHeaderStatus("chat.hint_thinking", "thinking");
-          break;
-        case "speaking":
-          setHeaderStatus("chat.hint_speaking", "speaking");
-          break;
-        case "interrupted":
-          setHeaderStatus("chat.hint_interrupted", "listening");
-          break;
-        case "idle":
-        case "calibrating":
-          // ничего — ждём
-          break;
-        case "error":
-          // ошибку покажет onError
-          break;
-      }
-    },
-
-    onError: ({ code }) => {
-      console.error("[voice]", code);
-
-      const lang = getState().profile?.interface_language || "en";
-
-      if (code === "mic-denied") {
-        showToast(t("chat.hint_microphone_denied", null, lang), "error");
-      } else if (code === "mic-error") {
-        showToast(t("chat.hint_microphone", null, lang), "error");
-      }
-    },
-  });
-
-  setState({ voiceEngine: engine });
-  engine.start();
+  releaseRecordingStream();
+  mediaRecorder = null;
+  recordingChunks = [];
+  pendingVoiceBlob = null;
 }
 
-function pauseVoiceEngine() {
-  const engine = getState().voiceEngine;
-  if (engine) engine.pause();
-}
+function resetRecordingUI(wrapper) {
+  const wrap = wrapper.querySelector("#voicePreviewWrap");
+  if (wrap) {
+    wrap.hidden = true;
+    wrap.innerHTML = "";
+  }
 
-function resumeVoiceEngine() {
-  // движок сам вернётся в listening по окончании speaking/fetching
+  setRecordingUI(wrapper, false);
+  clearHeaderStatus();
 }
 
 /* =========================================================
