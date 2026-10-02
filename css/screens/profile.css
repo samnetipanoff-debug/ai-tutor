@@ -1,19 +1,2 @@
-/* PROFILE — editorial settings */
-.profile{height:100%;display:flex;flex-direction:column;background:var(--c-bg)}
-.profile-scroll{flex:1;overflow:auto;padding:28px 20px 34px}
-.profile-header{position:relative;align-items:flex-start!important;text-align:left!important;padding:8px 4px 32px!important}
-.profile-header:after{content:"";position:absolute;right:-20px;top:-20px;width:190px;height:190px;border-radius:50%;background:radial-gradient(circle,rgba(139,226,139,.12),transparent 68%);pointer-events:none}
-.profile-avatar{width:72px!important;height:72px!important;border-radius:22px!important;font-size:32px!important;margin-bottom:18px!important;background:linear-gradient(145deg,#242a28,#141816)!important;border:1px solid rgba(139,226,139,.24)!important}
-.profile-username{font-size:32px!important;line-height:1.05!important;letter-spacing:-1.2px!important}
-.profile-subtitle{font-size:14px!important;margin-top:7px!important;color:var(--c-text-4)!important}
-.profile-section{margin:0 0 14px!important;padding:0!important;background:rgba(255,255,255,.025)!important;border:1px solid rgba(255,255,255,.09)!important;border-radius:22px!important;box-shadow:none!important}
-.profile-section-title{padding:15px 17px 9px!important;margin:0!important;font-size:10px!important;letter-spacing:1.2px!important;color:var(--c-text-4)!important}
-.profile-row{min-height:70px!important;padding:12px 17px!important}
-.profile-row-label{font-size:12px!important;color:var(--c-text-4)!important}
-.profile-row-value{font-size:16px!important;font-weight:650!important}
-.profile-row-arrow{color:var(--c-text-4)!important}
-.profile-footer{display:none!important}
-.sheet-options{gap:8px}
-
-.profile-row-icon{color:var(--c-primary)!important;width:20px;height:20px;flex:0 0 20px}
-.profile-row-copy{flex:1;min-width:0}
+/* PROFILE — settings with clear groups */
+.profile{height:100%;display:flex;flex-direction:column;background:transparent}.profile-scroll{flex:1;overflow:auto;padding:24px 18px 34px}.profile-header{position:relative;align-items:flex-start!important;text-align:left!important;padding:6px 4px 24px!important}.profile-avatar{width:68px!important;height:68px!important;border-radius:20px!important;margin-bottom:14px!important;background:linear-gradient(145deg,#30435A,#1B293C)!important;border:1px solid rgba(139,226,139,.28)!important}.profile-username{font-size:30px!important}.profile-subtitle{color:var(--c-text-3)!important}.profile-section{margin:0 0 14px!important;padding:6px 0!important;background:var(--c-surface)!important;border:1px solid var(--c-border-2)!important;border-radius:20px!important;box-shadow:var(--sh-sm)!important}.profile-section-title{padding:10px 17px 6px!important;color:var(--c-text-4)!important}.profile-row{min-height:68px!important;padding:11px 16px!important}.profile-row+.profile-row{border-top:1px solid var(--c-border)!important}.profile-row-label{color:var(--c-text-3)!important}.profile-row-value{font-size:15px!important;font-weight:650!important}.profile-row-arrow{color:var(--c-text-3)!important}.profile-row-icon{color:var(--c-primary)!important}.profile-footer{display:none!important}.sheet-options{gap:8px}
