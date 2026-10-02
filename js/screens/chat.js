@@ -58,7 +58,7 @@ export function renderChat() {
         type="button"
         aria-label="Send"
       >
-        <span class="icon" data-icon="send"></span>
+        <span class="icon" data-icon="check"></span>
       </button>
     </div>
   `;
