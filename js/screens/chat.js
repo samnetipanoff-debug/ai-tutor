@@ -60,15 +60,15 @@ function renderSessionChooser(wrapper) {
 
       <div class="voice-session-options">
         <button class="voice-session-option" type="button" data-session="continue">
-          <span class="voice-session-option-icon">▶</span>
+          <span class="voice-session-option-icon">📖</span>
           <span><strong>${escapeHtml(t("chat.continue_lesson", null, lang))}</strong><small>${currentLesson ? escapeHtml(t("chat.current_lesson", null, lang)) : escapeHtml(t("chat.no_current_lesson", null, lang))}</small></span>
         </button>
         <button class="voice-session-option" type="button" data-session="repeat">
-          <span class="voice-session-option-icon">↻</span>
+          <span class="voice-session-option-icon">🔁</span>
           <span><strong>${escapeHtml(t("chat.repeat_lesson", null, lang))}</strong><small>${escapeHtml(t("chat.choose_lesson", null, lang))}</small></span>
         </button>
         <button class="voice-session-option is-wide" type="button" data-session="free">
-          <span class="voice-session-option-icon">◌</span>
+          <span class="voice-session-option-icon">🗣</span>
           <span><strong>${escapeHtml(t("chat.free_conversation", null, lang))}</strong><small>${escapeHtml(t("chat.free_conversation_hint", null, lang))}</small></span>
         </button>
       </div>
