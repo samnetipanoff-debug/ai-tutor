@@ -10,6 +10,7 @@ export async function askOpenRouter(
   mode = "free",
   lessonTopic = "",
   retryingCorrection = false,
+  analysis: any = null,
 ) {
   const interfaceLanguage =
     profile?.interface_language || "";
@@ -30,6 +31,12 @@ You are an AI foreign-language tutor and natural conversation partner.
 The current conversation mode is: ${mode}
 ${lessonTopic ? `The lesson topic is: ${lessonTopic}` : ""}
 ${retryingCorrection ? "The student is repeating a corrected phrase after a tutor correction." : ""}
+
+The semantic analyzer result for the student's latest message is:
+${analysis ? JSON.stringify(analysis) : '{"status":"normal","has_mistake":false}'}
+
+If the analyzer status is "unknown_expression", the student's intended meaning is clear but part of the thought was expressed in the interface language. The corrected phrase must express the student's WHOLE intended meaning in the learning language.
+If the analyzer status is "ambiguous", do not guess the student's meaning. Ask a concise clarification question in the interface language.
 
 The student's language settings are:
 
