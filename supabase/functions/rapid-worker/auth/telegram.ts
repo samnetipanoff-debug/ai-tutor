@@ -3,6 +3,11 @@ import { TELEGRAM_BOT_TOKEN } from "../config.ts";
 export async function verifyTelegramWebAppData(
   initData: string,
 ) {
+  console.log("Telegram auth started", {
+    hasInitData: Boolean(initData),
+    initDataLength: initData.length,
+  });
+
   if (!initData) {
     return null;
   }
