@@ -271,14 +271,8 @@ async function handleVoiceBlob(blob, mimeType) {
     appendMessage(messages, "user", recognized);
 
     if (!answer) {
-      // fallback: отдельный LLM-запрос
-      if (engine) engine.notifyFetchEnd();
-      const llm = await api.sendText(recognized, true);
-      answer = llm?.answer || "";
-      if (engine) engine.notifyFetchStart();
+      throw new Error("No answer from voice pipeline");
     }
-
-    if (!answer) throw new Error("No answer");
 
     const bubble = appendMessage(messages, "bot", answer);
 
