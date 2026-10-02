@@ -19,6 +19,7 @@ const state = {
 
   // Активный урок (объект из БД или null)
   currentLesson: null,
+  voiceSession: null,
 
   // Прогресс
   progress: null,
