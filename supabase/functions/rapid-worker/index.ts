@@ -142,10 +142,63 @@ Deno.serve(async (req) => {
           profile.learning_language,
         );
 
+      if (!transcription) {
+        return jsonResponse(
+          { ok: false, error: "Speech could not be transcribed" },
+          422,
+          CORS_HEADERS,
+        );
+      }
+
+      // Voice uses the same single conversation pipeline as text.
+      const conversation =
+        await getOrCreateConversation(telegramUser.id);
+
+      await saveMessage(
+        telegramUser.id,
+        conversation.id,
+        "user",
+        transcription,
+      );
+
+      const history =
+        await getChatHistory(telegramUser.id, conversation.id);
+
+      const [answer, mistake] = await Promise.all([
+        askOpenRouter(profile, history, true),
+        analyzeStudentMessage(transcription, profile),
+      ]);
+
+      let finalAnswer = answer;
+
+      if (mistake?.has_mistake) {
+        const correction = mistake.explanation
+          ? `${mistake.corrected_text}\n\n${mistake.explanation}`
+          : mistake.corrected_text;
+        finalAnswer = `${answer}\n\n${correction}`;
+      }
+
+      await saveMessage(
+        telegramUser.id,
+        conversation.id,
+        "assistant",
+        finalAnswer,
+      );
+
+      try {
+        await updateProgress(
+          String(telegramUser.id),
+          profile?.level || null,
+        );
+      } catch (error) {
+        console.error("Progress update failed:", error);
+      }
+
       return jsonResponse(
         {
           ok: true,
           text: transcription,
+          answer: finalAnswer,
         },
         200,
         CORS_HEADERS,
