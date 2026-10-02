@@ -1,8 +1,9 @@
 /* =========================================================
-   MENU SCREEN
+   MENU — PREMIUM LANGUAGE COACH
    ========================================================= */
 
 .menu {
+  position: relative;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -13,114 +14,253 @@
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-  padding: var(--sp-4);
+  padding: 28px 20px calc(32px + var(--safe-bottom));
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
 }
 
+/* =========================================================
+   HERO
+   ========================================================= */
+
 .menu-greeting {
-  margin-bottom: var(--sp-5);
+  position: relative;
+  margin: 8px 0 28px;
+  padding: 4px 2px;
+}
+
+.menu-greeting::before {
+  content: "";
+  position: absolute;
+  width: 180px;
+  height: 180px;
+  left: -70px;
+  top: -85px;
+  background: radial-gradient(
+    circle,
+    rgba(139, 226, 139, 0.08) 0%,
+    rgba(139, 226, 139, 0) 70%
+  );
+  pointer-events: none;
 }
 
 .menu-greeting-name {
-  font-size: var(--fs-2xl);
-  font-weight: 700;
-  line-height: 1.2;
+  position: relative;
+  font-size: clamp(30px, 8vw, 38px);
+  font-weight: 720;
+  line-height: 1.08;
+  letter-spacing: -1.2px;
   color: var(--c-text);
-  margin-bottom: var(--sp-1);
+  margin-bottom: 9px;
 }
 
 .menu-greeting-sub {
-  font-size: var(--fs-md);
+  position: relative;
+  max-width: 310px;
+  font-size: 15px;
   color: var(--c-text-3);
+  line-height: 1.45;
 }
 
+/* =========================================================
+   PRIMARY ACTION
+   ========================================================= */
+
 .menu-cards {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-3);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
 }
 
 .menu-card {
+  position: relative;
   display: flex;
-  align-items: center;
-  gap: var(--sp-3);
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 22px;
 
+  min-height: 158px;
   padding: 18px;
-  background: var(--c-surface);
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.045),
+      rgba(255, 255, 255, 0.012)
+    ),
+    var(--c-surface);
+
   border: 1px solid var(--c-border);
-  border-radius: var(--r-lg);
+  border-radius: 24px;
 
   cursor: pointer;
   text-align: left;
   width: 100%;
+  overflow: hidden;
+
+  box-shadow: var(--sh-sm);
 
   transition:
-    border-color var(--t-fast),
-    transform var(--t-fast),
-    box-shadow var(--t-fast);
+    transform var(--t-mid),
+    background var(--t-mid),
+    border-color var(--t-mid),
+    box-shadow var(--t-mid);
 }
 
-.menu-card:active {
-  transform: scale(0.99);
+.menu-card::after {
+  content: "";
+  position: absolute;
+  width: 130px;
+  height: 130px;
+  right: -70px;
+  bottom: -70px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(139, 226, 139, 0.09),
+    rgba(139, 226, 139, 0) 70%
+  );
+  pointer-events: none;
 }
 
 .menu-card:hover {
-  border-color: var(--c-primary-soft);
+  border-color: rgba(139, 226, 139, 0.18);
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.06),
+      rgba(255, 255, 255, 0.015)
+    ),
+    var(--c-surface-2);
   box-shadow: var(--sh-md);
+  transform: translateY(-1px);
+}
+
+.menu-card:active {
+  transform: scale(0.975);
 }
 
 .menu-card-icon {
-  width: 52px;
-  height: 52px;
-  flex: 0 0 52px;
-  border-radius: var(--r-md);
+  position: relative;
+  width: 46px;
+  height: 46px;
+  flex: 0 0 46px;
+  border-radius: 15px;
+
   display: flex;
   align-items: center;
   justify-content: center;
+
   background: var(--c-primary-soft);
   color: var(--c-primary);
 }
 
 .menu-card-icon .icon {
-  width: 24px;
-  height: 24px;
+  width: 21px;
+  height: 21px;
 }
 
 .menu-card-body {
-  flex: 1;
+  position: relative;
+  z-index: 1;
+  width: 100%;
   min-width: 0;
 }
 
 .menu-card-title {
-  font-size: var(--fs-md);
+  font-size: 16px;
   font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: -0.2px;
   color: var(--c-text);
-  margin-bottom: 3px;
+  margin-bottom: 6px;
 }
 
 .menu-card-subtitle {
-  font-size: var(--fs-sm);
+  font-size: 12.5px;
   color: var(--c-text-3);
-  line-height: 1.35;
+  line-height: 1.4;
+  max-width: 145px;
 }
 
 .menu-card-arrow {
-  flex: 0 0 auto;
+  position: absolute;
+  top: 18px;
+  right: 17px;
+  width: 17px;
+  height: 17px;
   color: var(--c-text-4);
-  width: 20px;
-  height: 20px;
+  transition:
+    color var(--t-fast),
+    transform var(--t-fast);
 }
 
-/* Hint при первом запуске */
+.menu-card:hover .menu-card-arrow {
+  color: var(--c-text-2);
+  transform: translateX(2px);
+}
+
+/* =========================================================
+   CARD VARIANTS
+   ========================================================= */
+
+.menu-card[data-target="chat"] {
+  grid-column: 1 / -1;
+  min-height: 182px;
+  padding: 20px;
+  background:
+    radial-gradient(
+      circle at 100% 100%,
+      rgba(139, 226, 139, 0.13),
+      rgba(139, 226, 139, 0) 42%
+    ),
+    linear-gradient(
+      145deg,
+      rgba(139, 226, 139, 0.075),
+      rgba(255, 255, 255, 0.015)
+    ),
+    var(--c-surface);
+}
+
+.menu-card[data-target="chat"] .menu-card-icon {
+  width: 52px;
+  height: 52px;
+  flex-basis: 52px;
+  border-radius: 17px;
+}
+
+.menu-card[data-target="chat"] .menu-card-title {
+  font-size: 20px;
+  letter-spacing: -0.35px;
+}
+
+.menu-card[data-target="chat"] .menu-card-subtitle {
+  max-width: 230px;
+  font-size: 13px;
+}
+
+.menu-card[data-target="chat"] .menu-card-arrow {
+  width: 20px;
+  height: 20px;
+  top: 21px;
+  right: 20px;
+}
+
+/* =========================================================
+   HINT
+   ========================================================= */
+
 .menu-hint {
-  margin-top: var(--sp-5);
-  padding: var(--sp-3) var(--sp-4);
-  border-radius: var(--r-md);
+  margin-top: 18px;
+  padding: 14px 15px;
+
+  border-radius: 17px;
   background: var(--c-primary-soft-2);
-  border: 1px solid var(--c-primary-soft);
+  border: 1px solid rgba(139, 226, 139, 0.09);
+
   display: flex;
-  gap: var(--sp-3);
+  gap: 11px;
   align-items: flex-start;
 }
 
@@ -128,10 +268,36 @@
   color: var(--c-primary);
   flex: 0 0 auto;
   margin-top: 2px;
+  width: 17px;
+  height: 17px;
 }
 
 .menu-hint-text {
-  font-size: var(--fs-sm);
-  color: var(--c-text-2);
+  font-size: 12.5px;
+  color: var(--c-text-3);
   line-height: 1.45;
+}
+
+/* =========================================================
+   SMALL SCREENS
+   ========================================================= */
+
+@media (max-width: 360px) {
+  .menu-scroll {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .menu-cards {
+    gap: 10px;
+  }
+
+  .menu-card {
+    min-height: 148px;
+    padding: 16px;
+  }
+
+  .menu-card[data-target="chat"] {
+    min-height: 170px;
+  }
 }
