@@ -253,13 +253,35 @@ function appendMessage(container, role, text) {
 function appendVoiceMessage(container, role, voice) {
   const wrapper = document.createElement("div");
   wrapper.className = `msg is-${role}`;
+
+  if (role === "bot" && !voice.audio_url) {
+    const bubble = document.createElement("div");
+    bubble.className = "msg-bubble";
+    bubble.textContent = voice.text || "";
+    wrapper.appendChild(bubble);
+    container.appendChild(wrapper);
+
+    if (voice.translation) {
+      const translation = document.createElement("div");
+      translation.className = "msg-voice-translation";
+      translation.textContent = voice.translation;
+      bubble.appendChild(translation);
+    }
+
+    scrollToBottom(container.closest(".chat-scroll"));
+    return bubble;
+  }
+
   const bubble = document.createElement("div");
   bubble.className = "msg-voice";
 
   const audio = document.createElement("audio");
   audio.controls = true;
   audio.preload = "metadata";
-  if (voice.audio_url) audio.src = voice.audio_url;
+  if (voice.audio_url) {
+    audio.src = voice.audio_url;
+    audio.load();
+  }
 
   const meta = document.createElement("div");
   meta.className = "msg-voice-label";
@@ -545,8 +567,8 @@ async function sendPendingVoice(wrapper) {
 
     thinking.remove();
 
-    if (!data?.user_voice?.audio_url || !data?.bot_voice?.audio_url) {
-      throw new Error("Persistent voice audio is missing");
+    if (!data?.user_voice?.audio_url) {
+      throw new Error("Persistent user voice audio is missing");
     }
 
     appendVoiceMessage(messages, "user", {
