@@ -1,7 +1,4 @@
-/* =========================================================
-   MENU SCREEN
-   ========================================================= */
-
+/* MAIN MENU */
 import telegram from "../telegram.js";
 import { getState } from "../state.js";
 import { t } from "../i18n.js";
@@ -10,67 +7,61 @@ import { hydrateIcons } from "../icons.js";
 
 export function renderMenu() {
   const { user, profile } = getState();
-
   const lang = profile?.interface_language || "en";
-  const name =
-    user?.first_name ||
-    user?.username ||
-    "👋";
+  const name = user?.first_name || user?.username || "👋";
 
   const wrapper = document.createElement("div");
   wrapper.className = "menu";
-
   wrapper.innerHTML = `
     <div class="menu-scroll">
-      <div class="menu-greeting">
-        <div class="menu-greeting-name">
-          ${escapeHtml(name)}
-        </div>
-        <div class="menu-greeting-sub">
-          ${t("menu.title", null, lang)}
-        </div>
-      </div>
+      <section class="menu-intro">
+        <div class="menu-eyebrow">AI TUTOR</div>
+        <h1 class="menu-greeting-name">${escapeHtml(name)}</h1>
+        <p class="menu-greeting-sub">${t("menu.title", null, lang)}</p>
+      </section>
 
-      <div class="menu-cards">
-        ${renderCard("chat", "chat", "menu.chat_title", "menu.chat_subtitle", lang)}
-        ${renderCard("lessons", "book", "menu.lessons_title", "menu.lessons_subtitle", lang)}
-        ${renderCard("progress", "chart", "menu.progress_title", "menu.progress_subtitle", lang)}
-        ${renderCard("profile", "user", "menu.profile_title", "menu.profile_subtitle", lang)}
-      </div>
+      <section class="menu-hero">
+        <div class="menu-hero-orb"><span class="icon" data-icon="chat"></span></div>
+        <div class="menu-hero-copy">
+          <div class="menu-hero-kicker">${t("menu.chat_title", null, lang)}</div>
+          <div class="menu-hero-title">${t("menu.chat_subtitle", null, lang)}</div>
+        </div>
+        <button class="menu-hero-action" type="button" data-target="chat" aria-label="Open chat">
+          <span class="icon" data-icon="arrowRight"></span>
+        </button>
+      </section>
+
+      <div class="menu-section-label">${t("lessons.title", null, lang)}</div>
+      <section class="menu-actions">
+        ${renderAction("lessons","book","menu.lessons_title","menu.lessons_subtitle",lang)}
+        ${renderAction("progress","chart","menu.progress_title","menu.progress_subtitle",lang)}
+        ${renderAction("profile","user","menu.profile_title","menu.profile_subtitle",lang)}
+      </section>
 
       ${renderHint(lang)}
     </div>
   `;
 
   hydrateIcons(wrapper);
-
-  // Навигация
-  wrapper.querySelectorAll(".menu-card").forEach((el) => {
+  wrapper.querySelectorAll("[data-target]").forEach((el) => {
     el.addEventListener("click", () => {
       telegram.haptic.impact("light");
       const target = el.getAttribute("data-target");
       if (target) navigate(target);
     });
   });
-
   return wrapper;
 }
 
-/* =========================================================
-   HELPERS
-   ========================================================= */
-
-function renderCard(target, icon, titleKey, subtitleKey, lang) {
+function renderAction(target, icon, titleKey, subtitleKey, lang) {
   return `
-    <button class="menu-card" type="button" data-target="${target}">
-      <div class="menu-card-icon">
-        <span class="icon" data-icon="${icon}"></span>
-      </div>
-      <div class="menu-card-body">
-        <div class="menu-card-title">${t(titleKey, null, lang)}</div>
-        <div class="menu-card-subtitle">${t(subtitleKey, null, lang)}</div>
-      </div>
-      <span class="menu-card-arrow icon" data-icon="arrowRight"></span>
+    <button class="menu-action" type="button" data-target="${target}">
+      <span class="menu-action-icon"><span class="icon" data-icon="${icon}"></span></span>
+      <span class="menu-action-copy">
+        <span class="menu-action-title">${t(titleKey, null, lang)}</span>
+        <span class="menu-action-subtitle">${t(subtitleKey, null, lang)}</span>
+      </span>
+      <span class="menu-action-arrow icon" data-icon="arrowRight"></span>
     </button>
   `;
 }
@@ -79,18 +70,11 @@ function renderHint(lang) {
   return `
     <div class="menu-hint">
       <span class="menu-hint-icon icon" data-icon="sparkles"></span>
-      <div class="menu-hint-text">
-        ${t("onboarding.step_done_subtitle", null, lang)}
-      </div>
+      <div class="menu-hint-text">${t("onboarding.step_done_subtitle", null, lang)}</div>
     </div>
   `;
 }
 
 function escapeHtml(str) {
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
+  return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
 }
