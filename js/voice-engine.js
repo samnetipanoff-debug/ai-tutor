@@ -30,14 +30,14 @@ const DEFAULTS = {
   adaptiveNoiseCeiling: 0.06,
 
   // Пороги (множители к noiseFloor)
-  speechStartMultiplier: 3.0,
-  speechKeepMultiplier: 2.0,
-  speechAbsoluteMin: 0.018,
+  speechStartMultiplier: 2.0,
+  speechKeepMultiplier: 1.45,
+  speechAbsoluteMin: 0.009,
 
   // --- Тайминги ---
-  speechStartHoldMs: 90,
-  silenceBaseMs: 750,
-  silenceShortMs: 900,
+  speechStartHoldMs: 70,
+  silenceBaseMs: 700,
+  silenceShortMs: 800,
   silenceLongMs: 1100,
   minSpeechDurationMs: 280,
   maxRecordingMs: 20000,
