@@ -1,4 +1,4 @@
-/* MAIN MENU */
+/* HOME — rebuilt component structure */
 import telegram from "../telegram.js";
 import { getState } from "../state.js";
 import { t } from "../i18n.js";
@@ -20,16 +20,14 @@ export function renderMenu() {
         <p class="menu-greeting-sub">${t("menu.title", null, lang)}</p>
       </section>
 
-      <section class="menu-hero">
+      <button class="menu-hero" type="button" data-target="chat">
         <div class="menu-hero-orb"><span class="icon" data-icon="chat"></span></div>
         <div class="menu-hero-copy">
           <div class="menu-hero-kicker">${t("menu.chat_title", null, lang)}</div>
           <div class="menu-hero-title">${t("menu.chat_subtitle", null, lang)}</div>
         </div>
-        <button class="menu-hero-action" type="button" data-target="chat" aria-label="Open chat">
-          <span class="icon" data-icon="arrowRight"></span>
-        </button>
-      </section>
+        <span class="menu-hero-action icon" data-icon="arrowRight" aria-hidden="true"></span>
+      </button>
 
       <div class="menu-section-label">${t("lessons.title", null, lang)}</div>
       <section class="menu-actions">
@@ -38,18 +36,22 @@ export function renderMenu() {
         ${renderAction("profile","user","menu.profile_title","menu.profile_subtitle",lang)}
       </section>
 
-      ${renderHint(lang)}
+      <div class="menu-hint">
+        <span class="menu-hint-icon icon" data-icon="sparkles"></span>
+        <div class="menu-hint-text">${t("onboarding.step_done_subtitle", null, lang)}</div>
+      </div>
     </div>
   `;
 
   hydrateIcons(wrapper);
+
   wrapper.querySelectorAll("[data-target]").forEach((el) => {
     el.addEventListener("click", () => {
       telegram.haptic.impact("light");
-      const target = el.getAttribute("data-target");
-      if (target) navigate(target);
+      navigate(el.getAttribute("data-target"));
     });
   });
+
   return wrapper;
 }
 
@@ -61,17 +63,7 @@ function renderAction(target, icon, titleKey, subtitleKey, lang) {
         <span class="menu-action-title">${t(titleKey, null, lang)}</span>
         <span class="menu-action-subtitle">${t(subtitleKey, null, lang)}</span>
       </span>
-      <span class="menu-action-arrow icon" data-icon="arrowRight"></span>
     </button>
-  `;
-}
-
-function renderHint(lang) {
-  return `
-    <div class="menu-hint">
-      <span class="menu-hint-icon icon" data-icon="sparkles"></span>
-      <div class="menu-hint-text">${t("onboarding.step_done_subtitle", null, lang)}</div>
-    </div>
   `;
 }
 
