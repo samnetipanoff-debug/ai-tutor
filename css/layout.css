@@ -18,17 +18,19 @@
    HEADER
    ========================================================= */
 
+/* Fixed app header: navigation never drifts with page content */
 .header {
-  flex: 0 0 auto;
+  position: relative;
+  flex: 0 0 58px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--sp-3);
 
   padding:
-    calc(var(--sp-3) + var(--safe-top))
-    var(--sp-5)
-    var(--sp-3);
+    calc(8px + var(--safe-top))
+    14px
+    8px;
 
   background: color-mix(in srgb, var(--c-bg) 92%, transparent);
   border-bottom: 1px solid var(--c-border);
@@ -358,3 +360,13 @@
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+
+.header-close{
+  width:40px;height:40px;flex:0 0 40px;border-radius:13px;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--c-text-2);font-size:28px;font-weight:300;line-height:1;
+  background:var(--c-surface);border:1px solid var(--c-border-2);
+  box-shadow:var(--sh-sm);transition:background var(--t-fast),color var(--t-fast),transform var(--t-fast);
+}
+.header-close:hover{background:var(--c-surface-2);color:var(--c-text);}
+.header-close:active{transform:scale(.92)}
