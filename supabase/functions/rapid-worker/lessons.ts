@@ -326,7 +326,16 @@ async function chooseItems(
 
     if (exists) continue;
 
-    const created = await createLearningItem(telegramId, item);
+    const difficulty =
+      item.difficulty === "beginner" ? 1 :
+      item.difficulty === "intermediate" ? 2 :
+      item.difficulty === "advanced" ? 3 :
+      Number(item.difficulty) || 1;
+
+    const created = await createLearningItem(telegramId, {
+      ...item,
+      difficulty,
+    });
     selected.push(created);
   }
 
