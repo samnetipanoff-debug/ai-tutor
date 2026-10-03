@@ -43,8 +43,16 @@ async function loadAndRender(wrapper) {
     const mistakes = data?.mistakes || [];
     const skillProgress = data?.skill_progress || [];
     const learningItems = data?.learning_items || [];
+    const lessons = data?.lessons || [];
 
-    setState({ progress, vocabulary, mistakes, skillProgress, learningItems });
+    setState({
+      progress,
+      vocabulary,
+      mistakes,
+      skillProgress,
+      learningItems,
+      lessons,
+    });
 
     scroll.innerHTML = renderContent(
       progress,
@@ -52,13 +60,14 @@ async function loadAndRender(wrapper) {
       mistakes,
       skillProgress,
       learningItems,
+      lessons,
       lang,
     );
   } catch (error) {
     console.error("progress load error:", error);
 
     // Показываем дефолтные нули, если бэкенд не отвечает
-    scroll.innerHTML = renderContent({}, [], [], [], [], lang);
+    scroll.innerHTML = renderContent({}, [], [], [], [], [], lang);
     showToast(t("errors.network", null, lang), "error");
   }
 
@@ -69,7 +78,7 @@ async function loadAndRender(wrapper) {
    CONTENT
    ========================================================= */
 
-function renderContent(progress, vocabulary, mistakes, skillProgress, learningItems, lang) {
+function renderContent(progress, vocabulary, mistakes, skillProgress, learningItems, lessons, lang) {
   const lessonsCount = progress.lessons_completed || 0;
   const wordsCount = progress.words_learned || 0;
   const mistakesCount = progress.mistakes_count || 0;
@@ -94,6 +103,13 @@ function renderContent(progress, vocabulary, mistakes, skillProgress, learningIt
 
     <div class="progress-section">
       <div class="progress-section-title">
+        ${t("progress.lesson_history", null, lang)}
+      </div>
+      ${renderLessonHistory(lessons, lang)}
+    </div>
+
+    <div class="progress-section">
+      <div class="progress-section-title">
         ${t("progress.weak_spots", null, lang)}
       </div>
       ${renderWeakSpots(mistakes, lang)}
@@ -111,6 +127,44 @@ function renderContent(progress, vocabulary, mistakes, skillProgress, learningIt
         ${t("progress.vocabulary", null, lang)}
       </div>
       ${renderVocabulary(vocabulary, lang)}
+    </div>
+  `;
+}
+
+function renderLessonHistory(lessons, lang) {
+  if (!lessons || lessons.length === 0) {
+    return `<div class="progress-empty">${t("progress.no_lesson_history", null, lang)}</div>`;
+  }
+
+  return `
+    <div class="progress-list">
+      ${lessons
+        .slice(0, 10)
+        .map((lesson) => {
+          const completed = lesson.status === "completed";
+          const testTotal = Number(lesson.test_items || 0);
+          const testCorrect = Number(lesson.test_correct || 0);
+          const score = testTotal > 0
+            ? `${testCorrect}/${testTotal}`
+            : `${Number(lesson.score || 0)}/${Number(lesson.total_items || 0)}`;
+
+          return `
+            <div class="progress-list-item">
+              <div class="progress-list-item-row">
+                <div class="progress-list-item-word">
+                  #${Number(lesson.lesson_number || 0)} ${escapeHtml(lesson.topic || t("progress.general_lesson", null, lang))}
+                </div>
+                <div class="progress-list-item-translation">
+                  ${completed ? t("progress.completed", null, lang) : t("progress.in_progress", null, lang)}
+                </div>
+              </div>
+              <div class="progress-list-item-sub">
+                ${t("progress.test_result_short", { score }, lang)}
+              </div>
+            </div>
+          `;
+        })
+        .join("")}
     </div>
   `;
 }
