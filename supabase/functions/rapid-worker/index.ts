@@ -94,7 +94,6 @@ Deno.serve(async (req) => {
       const retryingCorrection = String(formData.get("retrying_correction") || "") === "true";
       const mimeType = audio.type || "audio/webm";
       const audioBytes = await audio.arrayBuffer();
-      const conversation = await getOrCreateConversation(telegramUser.id);
 
       const userAudioPath = `users/${telegramUser.id}/${crypto.randomUUID()}${audioExtension(mimeType)}`;
       await uploadVoice(audioBytes, mimeType, userAudioPath);
@@ -104,6 +103,21 @@ Deno.serve(async (req) => {
         return jsonResponse({ ok: false, error: "Speech could not be transcribed" }, 422, CORS_HEADERS);
       }
 
+      if (mode === "lesson") {
+        const result = await answerLesson(
+          String(telegramUser.id),
+          transcription,
+        );
+
+        return jsonResponse({
+          ok: true,
+          text: transcription,
+          correct: Boolean(result?.correct),
+          lesson: result?.lesson,
+        }, 200, CORS_HEADERS);
+      }
+
+      const conversation = await getOrCreateConversation(telegramUser.id);
       const userMessage = JSON.stringify({
         type: "voice",
         audio_path: userAudioPath,
@@ -571,7 +585,7 @@ Deno.serve(async (req) => {
           : mistake.corrected_text;
 
       finalAnswer =
-        `${answer}\n\n${correction}`;
+        `${aiAnswer}\n\n${correction}`;
     }
 
     // --------------------------------------------------
