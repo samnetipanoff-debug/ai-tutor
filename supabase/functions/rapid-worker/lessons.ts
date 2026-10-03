@@ -169,6 +169,27 @@ async function createLesson(
   return rows?.[0] as Lesson;
 }
 
+async function analyzeLessonAnswer(
+  answer: string,
+  expected: string,
+  item: LearningItem,
+  profile: any,
+) {
+  const interfaceLanguage = profile?.interface_language || "en";
+  const learningLanguage = profile?.learning_language || "en";
+  const prompt = "You are an AI language tutor analyzing an incorrect lesson answer.\n\nInterface language: " + interfaceLanguage + "\nLearning language: " + learningLanguage + "\nLearning item type: " + item.type + "\n\nExpected answer:\n" + expected + "\n\nStudent answer:\n" + answer + "\n\nIdentify the specific missing, extra, or incorrect word or grammar element. If the answer is substantially different, briefly explain that. Do not call an acceptable equivalent a mistake. Explanation must be in the interface language. Corrected answer must be in the learning language. Return ONLY valid JSON with explanation and corrected_text.";
+  try {
+    const raw = await callOpenRouter([{ role: "system", content: prompt }], 220, 0, "Lesson Answer Analyzer");
+    const parsed = JSON.parse(raw.replace(/^```json\\s*/i, "").replace(/\\s*```$/i, "").trim());
+    if (parsed?.explanation && parsed?.corrected_text) {
+      return { explanation: String(parsed.explanation), corrected_text: String(parsed.corrected_text) };
+    }
+  } catch (error) {
+    console.error("Lesson answer analysis failed:", error);
+  }
+  return { explanation: "Compare your answer with the expected phrase carefully.", corrected_text: expected };
+}
+
 async function nextLessonNumber(telegramId: string) {
   const response = await supabaseRequest(
     `lessons?telegram_id=eq.${encodeURIComponent(telegramId)}&select=lesson_number&order=lesson_number.desc&limit=1`,
@@ -434,6 +455,12 @@ export async function answerLesson(
   const lesson = await getActiveLesson(telegramId);
   if (!lesson) throw new Error("No active lesson");
 
+  const profileResponse = await supabaseRequest(
+    `users?telegram_id=eq.${encodeURIComponent(telegramId)}&select=interface_language,learning_language,level,goal&limit=1`,
+  );
+  const profileRows = profileResponse.ok ? await profileResponse.json() : [];
+  const profile = profileRows?.[0] || {};
+
   if (lesson.current_step === "test") {
     const testData = (lesson.test_data || []) as any[];
     const index = Number(lesson.test_index || 0);
@@ -572,6 +599,13 @@ export async function answerLesson(
     currentItem.id,
   );
 
+  const answerFeedback = await analyzeLessonAnswer(
+    answer,
+    currentItem.content,
+    currentItem,
+    profile,
+  );
+
   const updated = await updateLesson(
     lesson.id,
     {
@@ -583,6 +617,7 @@ export async function answerLesson(
 
   return {
     correct: false,
+    feedback: answerFeedback,
     lesson: lessonPayload(updated),
     learning_item: currentItem,
   };
