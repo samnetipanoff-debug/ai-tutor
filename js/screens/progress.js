@@ -41,15 +41,24 @@ async function loadAndRender(wrapper) {
     const progress = data?.progress || {};
     const vocabulary = data?.vocabulary || [];
     const mistakes = data?.mistakes || [];
+    const skillProgress = data?.skill_progress || [];
+    const learningItems = data?.learning_items || [];
 
-    setState({ progress, vocabulary, mistakes });
+    setState({ progress, vocabulary, mistakes, skillProgress, learningItems });
 
-    scroll.innerHTML = renderContent(progress, vocabulary, mistakes, lang);
+    scroll.innerHTML = renderContent(
+      progress,
+      vocabulary,
+      mistakes,
+      skillProgress,
+      learningItems,
+      lang,
+    );
   } catch (error) {
     console.error("progress load error:", error);
 
     // Показываем дефолтные нули, если бэкенд не отвечает
-    scroll.innerHTML = renderContent({}, [], [], lang);
+    scroll.innerHTML = renderContent({}, [], [], [], [], lang);
     showToast(t("errors.network", null, lang), "error");
   }
 
@@ -60,7 +69,7 @@ async function loadAndRender(wrapper) {
    CONTENT
    ========================================================= */
 
-function renderContent(progress, vocabulary, mistakes, lang) {
+function renderContent(progress, vocabulary, mistakes, skillProgress, learningItems, lang) {
   const lessonsCount = progress.lessons_completed || 0;
   const wordsCount = progress.words_learned || 0;
   const mistakesCount = progress.mistakes_count || 0;
@@ -78,6 +87,20 @@ function renderContent(progress, vocabulary, mistakes, lang) {
 
     <div class="progress-section">
       <div class="progress-section-title">
+        ${t("progress.learning_progress", null, lang)}
+      </div>
+      ${renderLearningProgress(skillProgress, learningItems, lang)}
+    </div>
+
+    <div class="progress-section">
+      <div class="progress-section-title">
+        ${t("progress.weak_spots", null, lang)}
+      </div>
+      ${renderWeakSpots(mistakes, lang)}
+    </div>
+
+    <div class="progress-section">
+      <div class="progress-section-title">
         ${t("progress.recent_mistakes", null, lang)}
       </div>
       ${renderMistakes(mistakes, lang)}
@@ -88,6 +111,91 @@ function renderContent(progress, vocabulary, mistakes, lang) {
         ${t("progress.vocabulary", null, lang)}
       </div>
       ${renderVocabulary(vocabulary, lang)}
+    </div>
+  `;
+}
+
+function renderLearningProgress(skillProgress, learningItems, lang) {
+  if (!skillProgress || skillProgress.length === 0) {
+    return `<div class="progress-empty">${t("progress.no_learning_progress", null, lang)}</div>`;
+  }
+
+  const itemsById = new Map(
+    (learningItems || []).map((item) => [String(item.id), item]),
+  );
+
+  return `
+    <div class="progress-list">
+      ${skillProgress
+        .slice()
+        .sort((a, b) => Number(b.mastery || 0) - Number(a.mastery || 0))
+        .slice(0, 10)
+        .map((skill) => {
+          const item = itemsById.get(String(skill.learning_item_id));
+          if (!item) return "";
+
+          const mastery = Math.max(
+            0,
+            Math.min(100, Math.round(Number(skill.mastery || 0) * 100)),
+          );
+          const statusKey =
+            skill.status === "mastered"
+              ? "mastered"
+              : skill.status === "weak"
+                ? "weak"
+                : "learning";
+
+          return `
+            <div class="progress-list-item progress-learning-item">
+              <div class="progress-learning-head">
+                <div>
+                  <div class="progress-list-item-word">${escapeHtml(item.content || "")}</div>
+                  ${item.translation ? `<div class="progress-list-item-sub">${escapeHtml(item.translation)}</div>` : ""}
+                </div>
+                <div class="progress-learning-percent">${mastery}%</div>
+              </div>
+              <div class="progress-learning-bar">
+                <div class="progress-learning-fill" style="width:${mastery}%"></div>
+              </div>
+              <div class="progress-learning-meta">
+                <span>${t(`progress.status_${statusKey}`, null, lang)}</span>
+                <span>${Number(skill.attempts || 0)} ${t("progress.attempts", null, lang)}</span>
+              </div>
+            </div>
+          `;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
+function renderWeakSpots(mistakes, lang) {
+  const topics = new Map();
+
+  (mistakes || []).forEach((mistake) => {
+    const topic = String(mistake.grammar_topic || "").trim();
+    if (!topic) return;
+    topics.set(topic, (topics.get(topic) || 0) + 1);
+  });
+
+  if (topics.size === 0) {
+    return `<div class="progress-empty">${t("progress.no_weak_spots", null, lang)}</div>`;
+  }
+
+  return `
+    <div class="progress-list">
+      ${Array.from(topics.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(
+          ([topic, count]) => `
+            <div class="progress-list-item progress-weak-item">
+              <div class="progress-list-item-main">${escapeHtml(topic)}</div>
+              <div class="progress-list-item-sub">${count} ${t("progress.mistake_label", null, lang)}</div>
+            </div>
+          `,
+        )
+        .join("")}
     </div>
   `;
 }
