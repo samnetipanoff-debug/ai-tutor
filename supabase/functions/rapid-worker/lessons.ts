@@ -393,12 +393,14 @@ function lessonPayload(lesson: Lesson | undefined) {
 
 async function incrementCompletedLessons(telegramId: string) {
   const response = await supabaseRequest(
-    `progress?telegram_id=eq.${encodeURIComponent(telegramId)}&select=id,lessons_completed`,
+    `progress?telegram_id=eq.${encodeURIComponent(telegramId)}&select=id,lessons_completed,streak,last_active_date`,
   );
 
   if (!response.ok) return;
 
   const rows = await response.json();
+  const today = new Date().toISOString().slice(0, 10);
+
   if (!rows?.[0]) {
     await supabaseRequest("progress", {
       method: "POST",
@@ -408,11 +410,29 @@ async function incrementCompletedLessons(telegramId: string) {
         lessons_completed: 1,
         words_learned: 0,
         mistakes_count: 0,
-        streak: 0,
+        streak: 1,
+        last_active_date: today,
         updated_at: new Date().toISOString(),
       }),
     });
     return;
+  }
+
+  const currentStreak = Number(rows[0].streak || 0);
+  const lastActiveDate = rows[0].last_active_date
+    ? String(rows[0].last_active_date).slice(0, 10)
+    : null;
+
+  let streak = currentStreak;
+
+  if (lastActiveDate !== today) {
+    const yesterday = new Date();
+    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+    const yesterdayDate = yesterday.toISOString().slice(0, 10);
+
+    streak = lastActiveDate === yesterdayDate
+      ? currentStreak + 1
+      : 1;
   }
 
   await supabaseRequest(
@@ -421,6 +441,8 @@ async function incrementCompletedLessons(telegramId: string) {
       method: "PATCH",
       body: JSON.stringify({
         lessons_completed: Number(rows[0].lessons_completed || 0) + 1,
+        streak,
+        last_active_date: today,
         updated_at: new Date().toISOString(),
       }),
     },
