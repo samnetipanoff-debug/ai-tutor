@@ -7,6 +7,12 @@ import { navigate, showToast, showLoader, hideLoader } from "../app.js";
 import { hydrateIcons } from "../icons.js";
 import { fetchTts, playBlob, stopCurrent } from "../audio.js";
 
+let lessonRecorder = null;
+let lessonRecordingStream = null;
+let lessonRecordingChunks = [];
+let lessonRecordingStartedAt = 0;
+let lessonRecordingTimer = null;
+
 const TOPICS = [
   { code: "work", emoji: "💼" },
   { code: "food", emoji: "🍽" },
@@ -88,6 +94,7 @@ function renderLearningItem(lesson, lang) {
   const done = Number(lesson.completed_items || 0);
   const total = Number(lesson.total_items || 3);
   const isRepeat = step === "repeat";
+  const voiceFeedback = getState().lessonVoiceFeedback;
 
   return `
     <section class="lesson-card">
@@ -112,8 +119,8 @@ function renderLearningItem(lesson, lang) {
         ? `<div class="lesson-example">${escapeHtml(lesson.current_example)}</div>`
         : ""}
 
-      ${isRepeat
-        ? `<div class="lesson-feedback is-error">${escapeHtml(t("lessons.feedback.incorrect", null, lang))}</div>`
+      ${isRepeat && voiceFeedback
+        ? `<div class="lesson-feedback is-error">${escapeHtml(t("lessons.feedback.incorrect", null, lang))}<br><span class="lesson-feedback-heard">${escapeHtml(voiceFeedback.heard)}</span><br><strong>${escapeHtml(lesson.current_word || "")}</strong></div>`
         : ""}
 
       <div class="lesson-actions">
@@ -124,14 +131,10 @@ function renderLearningItem(lesson, lang) {
           ? `<button class="lesson-action lesson-action-primary" type="button" data-next>
               ${escapeHtml(t("lessons.actions.next", null, lang))}
             </button>`
-          : `<div class="lesson-answer-row">
-              <input class="lesson-answer" type="text" data-answer
-                placeholder="${escapeHtml(t("lessons.actions.repeat", null, lang))}"
-                autocomplete="off" />
-              <button class="lesson-action lesson-action-primary" type="button" data-answer-submit>
-                ${escapeHtml(t("lessons.actions.repeat", null, lang))}
-              </button>
-            </div>`}
+          : `<button class="lesson-action lesson-action-primary lesson-voice-answer" type="button" data-lesson-voice>
+              <span class="icon" data-icon="mic"></span>
+              <span data-lesson-voice-label>${escapeHtml(t("chat.record_voice", null, lang))}</span>
+            </button>`}
       </div>
     </section>
   `;
@@ -189,15 +192,11 @@ function renderCompletedLesson(lesson, lang) {
 function bindLessonEvents(wrapper) {
   wrapper.querySelector("[data-listen]")?.addEventListener("click", () => listenCurrentItem(wrapper));
   wrapper.querySelector("[data-next]")?.addEventListener("click", () => nextStep(wrapper));
-  wrapper.querySelector("[data-answer-submit]")?.addEventListener("click", () => submitAnswer(wrapper));
+  wrapper.querySelector("[data-lesson-voice]")?.addEventListener("click", () => toggleLessonRecording(wrapper));
   wrapper.querySelector("[data-test-submit]")?.addEventListener("click", () => submitTestAnswer(wrapper));
   wrapper.querySelector("[data-new-lesson]")?.addEventListener("click", () => {
-    setState({ currentLesson: null });
+    setState({ currentLesson: null, lessonVoiceFeedback: null });
     renderLessonsIntoCurrentScreen(wrapper);
-  });
-
-  wrapper.querySelector("[data-answer]")?.addEventListener("keydown", (event) => {
-    if (event.key === "Enter") submitAnswer(wrapper);
   });
 
   wrapper.querySelector("[data-test-answer]")?.addEventListener("keydown", (event) => {
@@ -216,34 +215,145 @@ async function listenCurrentItem(wrapper) {
     return;
   }
 
-  const actions = wrapper.querySelector(".lesson-actions");
-  await playBlob(blob, actions);
+  await playBlob(blob, null);
 }
 
-async function submitAnswer(wrapper) {
-  const input = wrapper.querySelector("[data-answer]");
-  const answer = input?.value?.trim();
-  if (!answer) return;
+async function toggleLessonRecording(wrapper) {
+  if (lessonRecorder?.state === "recording") {
+    lessonRecorder.stop();
+    return;
+  }
+
+  if (lessonRecorder) return;
+
+  const lang = getState().profile?.interface_language || "en";
+  if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+    showToast(t("chat.error_voice", null, lang), "error");
+    return;
+  }
+
+  try {
+    lessonRecordingStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const mimeType = getLessonRecordingMimeType();
+    lessonRecorder = new MediaRecorder(
+      lessonRecordingStream,
+      mimeType ? { mimeType } : undefined,
+    );
+    lessonRecordingChunks = [];
+    lessonRecordingStartedAt = Date.now();
+
+    lessonRecorder.addEventListener("dataavailable", (event) => {
+      if (event.data?.size) lessonRecordingChunks.push(event.data);
+    });
+
+    lessonRecorder.addEventListener("stop", async () => {
+      const recorder = lessonRecorder;
+      const blob = new Blob(lessonRecordingChunks, {
+        type: recorder?.mimeType || mimeType || "audio/webm",
+      });
+      releaseLessonRecording();
+
+      if (!blob.size) {
+        resetLessonVoiceButton(wrapper);
+        showToast(t("chat.error_voice", null, lang), "error");
+        return;
+      }
+
+      await submitLessonVoice(wrapper, blob, blob.type || "audio/webm");
+    });
+
+    lessonRecorder.start(250);
+    setLessonVoiceButton(wrapper, true);
+  } catch (error) {
+    console.error("lesson recording error:", error);
+    releaseLessonRecording();
+    resetLessonVoiceButton(wrapper);
+    showToast(t("chat.hint_microphone_denied", null, lang), "error");
+  }
+}
+
+function getLessonRecordingMimeType() {
+  return ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"]
+    .find((type) => {
+      try { return MediaRecorder.isTypeSupported(type); } catch { return false; }
+    }) || "";
+}
+
+function setLessonVoiceButton(wrapper, recording) {
+  const button = wrapper.querySelector("[data-lesson-voice]");
+  if (!button) return;
+
+  if (recording) {
+    button.classList.add("is-recording");
+    button.innerHTML = '<span class="lesson-voice-dot"></span><span data-lesson-voice-label>00:00</span>';
+    startLessonRecordingTimer(wrapper);
+  } else {
+    button.classList.remove("is-recording");
+    const lang = getState().profile?.interface_language || "en";
+    button.innerHTML = '<span class="icon" data-icon="mic"></span><span data-lesson-voice-label>' + escapeHtml(t("chat.record_voice", null, lang)) + '</span>';
+    hydrateIcons(button);
+    stopLessonRecordingTimer();
+  }
+}
+
+function startLessonRecordingTimer(wrapper) {
+  stopLessonRecordingTimer();
+  const button = wrapper.querySelector("[data-lesson-voice]");
+  lessonRecordingTimer = setInterval(() => {
+    const label = button?.querySelector("[data-lesson-voice-label]");
+    if (!label) return;
+    const seconds = Math.floor((Date.now() - lessonRecordingStartedAt) / 1000);
+    label.textContent = formatLessonDuration(seconds);
+  }, 250);
+}
+
+function stopLessonRecordingTimer() {
+  if (lessonRecordingTimer) clearInterval(lessonRecordingTimer);
+  lessonRecordingTimer = null;
+}
+
+function formatLessonDuration(seconds) {
+  return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+function releaseLessonRecording() {
+  stopLessonRecordingTimer();
+  if (lessonRecordingStream) {
+    lessonRecordingStream.getTracks().forEach((track) => track.stop());
+    lessonRecordingStream = null;
+  }
+  lessonRecorder = null;
+  lessonRecordingChunks = [];
+}
+
+function resetLessonVoiceButton(wrapper) {
+  setLessonVoiceButton(wrapper, false);
+}
+
+async function submitLessonVoice(wrapper, blob, mimeType) {
+  if (!blob?.size) return;
 
   setLessonBusy(wrapper, true);
 
   try {
-    const result = await api.answerLesson(answer);
-    if (!result?.lesson) throw new Error("Lesson answer failed");
+    const result = await api.answerLessonVoice(blob, mimeType);
+    if (!result?.lesson) throw new Error("Lesson voice answer failed");
 
-    setState({ currentLesson: result.lesson });
+    const feedback = result.correct
+      ? null
+      : { heard: result.text || "", correct: result.lesson?.current_word || "" };
 
-    if (result.correct) {
-      telegram.haptic.notification("success");
-      renderLessonsIntoCurrentScreen(wrapper);
-    } else {
-      telegram.haptic.notification("error");
-      renderLessonsIntoCurrentScreen(wrapper);
-      const lang = getState().profile?.interface_language || "en";
-      showToast(t("lessons.feedback.incorrect", null, lang), "error");
-    }
+    setState({
+      currentLesson: result.lesson,
+      lessonVoiceFeedback: feedback,
+    });
+
+    if (result.correct) telegram.haptic.notification("success");
+    else telegram.haptic.notification("error");
+
+    renderLessonsIntoCurrentScreen(wrapper);
   } catch (error) {
-    console.error("answerLesson error:", error);
+    console.error("lesson voice answer error:", error);
     showToast(t("errors.network", null, getState().profile?.interface_language || "en"), "error");
   } finally {
     setLessonBusy(wrapper, false);
@@ -280,7 +390,7 @@ async function nextStep(wrapper) {
   try {
     const result = await api.nextLessonStep();
     if (!result?.lesson) throw new Error("No next lesson step");
-    setState({ currentLesson: result.lesson });
+    setState({ currentLesson: result.lesson, lessonVoiceFeedback: null });
     renderLessonsIntoCurrentScreen(wrapper);
   } catch (error) {
     console.error("nextLessonStep error:", error);
