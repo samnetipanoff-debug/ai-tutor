@@ -540,7 +540,7 @@ Deno.serve(async (req) => {
       voice === true;
 
     const [
-      answer,
+      aiAnswer,
       mistake,
     ] = await Promise.all([
       askOpenRouter(
@@ -560,7 +560,7 @@ Deno.serve(async (req) => {
     // --------------------------------------------------
 
     let finalAnswer =
-      answer;
+      aiAnswer;
 
     if (
       mistake?.has_mistake
