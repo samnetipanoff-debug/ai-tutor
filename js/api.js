@@ -120,7 +120,7 @@ export const api = {
    *   - Blob (audio/mpeg) — если бэк отдаёт сырой mp3
    *   - { audio: "base64...", format: "mp3" } — если бэк отдаёт JSON
    */
-  async tts(text) {
+  async tts(text, language = null) {
     const response = await fetch(RAPID_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -128,6 +128,7 @@ export const api = {
         initData: telegram.initData,
         tts: true,
         text,
+        ...(language ? { tts_language: language } : {}),
       }),
     });
 
