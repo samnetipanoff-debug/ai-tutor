@@ -115,6 +115,13 @@ export const api = {
   },
 
   /**
+   * Отправить голосовой ответ в текущий урок.
+   */
+  answerLessonVoice(blob, mimeType = "audio/webm") {
+    return this.sendVoice(blob, mimeType, { mode: "lesson" });
+  },
+
+  /**
    * Сгенерировать TTS.
    * Возвращает:
    *   - Blob (audio/mpeg) — если бэк отдаёт сырой mp3
