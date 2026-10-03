@@ -6,6 +6,7 @@ import {
   getMistakeSignals,
   getSkillProgress,
   upsertSkillProgress,
+  saveLearningMistake,
   type LearningItem,
 } from "./db/learning.ts";
 import {
@@ -354,6 +355,9 @@ function lessonPayload(lesson: Lesson | undefined) {
     test_correct: lesson.test_correct,
     test_index: lesson.test_index,
     completed_at: lesson.completed_at,
+    test_current: lesson.current_step === "test"
+      ? (lesson.test_data || [])[Number(lesson.test_index || 0)] || null
+      : null,
   };
 }
 
@@ -421,6 +425,70 @@ export async function answerLesson(
   const lesson = await getActiveLesson(telegramId);
   if (!lesson) throw new Error("No active lesson");
 
+  if (lesson.current_step === "test") {
+    const testData = (lesson.test_data || []) as any[];
+    const index = Number(lesson.test_index || 0);
+    const testItem = testData[index];
+
+    if (!testItem) {
+      const completed = await updateLesson(lesson.id, {
+        status: "completed",
+        current_step: "done",
+        completed_at: new Date().toISOString(),
+      });
+      await incrementCompletedLessons(telegramId);
+      return {
+        correct: true,
+        test_complete: true,
+        lesson: lessonPayload(completed),
+        learning_item: null,
+      };
+    }
+
+    const correct =
+      normalizeLessonAnswer(answer) ===
+      normalizeLessonAnswer(String(testItem.content || ""));
+
+    const nextIndex = index + 1;
+    const testCorrect = Number(lesson.test_correct || 0) + (correct ? 1 : 0);
+    const score = Number(lesson.score || 0) + (correct ? 1 : 0);
+
+    const patch: Record<string, unknown> = {
+      test_items: Math.min(3, testData.length),
+      test_index: nextIndex,
+      test_correct: testCorrect,
+      score,
+    };
+
+    if (nextIndex >= Math.min(3, testData.length)) {
+      patch.status = "completed";
+      patch.current_step = "done";
+      patch.completed_at = new Date().toISOString();
+    }
+
+    const updated = await updateLesson(lesson.id, patch);
+
+    if (!correct) {
+      await saveLearningMistake(
+        telegramId,
+        answer,
+        String(testItem.content || ""),
+        String(testItem.learning_item_id || ""),
+      );
+    }
+
+    if (patch.status === "completed") {
+      await incrementCompletedLessons(telegramId);
+    }
+
+    return {
+      correct,
+      test_complete: patch.status === "completed",
+      lesson: lessonPayload(updated),
+      learning_item: testItem,
+    };
+  }
+
   const currentItem = await findLearningItemByContent(
     telegramId,
     lesson.current_word || "",
@@ -430,10 +498,9 @@ export async function answerLesson(
     throw new Error("Current learning item not found");
   }
 
-  const normalizedAnswer = answer.trim().toLowerCase();
-  const normalizedExpected = currentItem.content.trim().toLowerCase();
-  const correct =
-    normalizedAnswer === normalizedExpected;
+  const normalizedAnswer = normalizeLessonAnswer(answer);
+  const normalizedExpected = normalizeLessonAnswer(currentItem.content);
+  const correct = normalizedAnswer === normalizedExpected;
 
   await upsertSkillProgress(
     telegramId,
@@ -456,6 +523,14 @@ export async function answerLesson(
           completedItems >= Number(lesson.total_items || 3)
             ? "test"
             : "example",
+        test_items:
+          completedItems >= Number(lesson.total_items || 3)
+            ? Math.min(3, Number(lesson.total_items || 3))
+            : lesson.test_items,
+        test_index:
+          completedItems >= Number(lesson.total_items || 3)
+            ? 0
+            : lesson.test_index,
       },
     );
 
@@ -465,6 +540,13 @@ export async function answerLesson(
       learning_item: currentItem,
     };
   }
+
+  await saveLearningMistake(
+    telegramId,
+    answer,
+    currentItem.content,
+    currentItem.id,
+  );
 
   const updated = await updateLesson(
     lesson.id,
@@ -480,6 +562,14 @@ export async function answerLesson(
     lesson: lessonPayload(updated),
     learning_item: currentItem,
   };
+}
+
+function normalizeLessonAnswer(value: string) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[.,!?;:]+$/g, "")
+    .replace(/\s+/g, " ");
 }
 
 export async function nextLessonStep(
