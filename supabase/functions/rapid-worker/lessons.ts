@@ -496,7 +496,7 @@ export async function answerLesson(
   let currentItem: LearningItem | undefined;
 
   if (currentItemData?.learning_item_id) {
-    const items = await getLearningItems(telegramId, lesson.topic);
+    const items = await getLearningItems(telegramId);
     currentItem = items.find(
       (item) => item.id === String(currentItemData.learning_item_id),
     );
