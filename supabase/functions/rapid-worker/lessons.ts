@@ -489,10 +489,25 @@ export async function answerLesson(
     };
   }
 
-  const currentItem = await findLearningItemByContent(
-    telegramId,
-    lesson.current_word || "",
-  );
+  const lessonItems = (lesson.test_data || []) as any[];
+  const currentIndex = Math.max(0, Number(lesson.completed_items || 0));
+  const currentItemData = lessonItems[currentIndex];
+
+  let currentItem: LearningItem | undefined;
+
+  if (currentItemData?.learning_item_id) {
+    const items = await getLearningItems(telegramId, lesson.topic);
+    currentItem = items.find(
+      (item) => item.id === String(currentItemData.learning_item_id),
+    );
+  }
+
+  if (!currentItem) {
+    currentItem = await findLearningItemByContent(
+      telegramId,
+      lesson.current_word || "",
+    );
+  }
 
   if (!currentItem) {
     throw new Error("Current learning item not found");
