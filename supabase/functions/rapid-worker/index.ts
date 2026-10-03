@@ -223,6 +223,7 @@ Deno.serve(async (req) => {
       lesson,
       topic,
       answer,
+      tts_language,
     } = body;
 
     // --------------------------------------------------
@@ -421,7 +422,8 @@ Deno.serve(async (req) => {
       const audioBuffer =
         await generateSpeech(
           ttsText,
-          profile?.interface_language ||
+          tts_language ||
+            profile?.interface_language ||
             "en",
         );
 
