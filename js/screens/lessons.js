@@ -209,7 +209,8 @@ async function listenCurrentItem(wrapper) {
   const lesson = getState().currentLesson;
   if (!lesson?.current_word) return;
 
-  const blob = await fetchTts(lesson.current_word);
+  const learningLanguage = getState().profile?.learning_language || "en";
+  const blob = await fetchTts(lesson.current_word, learningLanguage);
   if (!blob) {
     showToast(t("errors.network", null, getState().profile?.interface_language || "en"), "error");
     return;
