@@ -217,6 +217,36 @@ export async function upsertSkillProgress(
   return payload;
 }
 
+export async function saveLearningMistake(
+  telegramId: string,
+  originalText: string,
+  correctedText: string,
+  learningItemId: string,
+) {
+  const response = await supabaseRequest("mistakes", {
+    method: "POST",
+    headers: {
+      "Prefer": "return=minimal",
+    },
+    body: JSON.stringify({
+      telegram_id: telegramId,
+      original_text: originalText,
+      corrected_text: correctedText,
+      explanation: "Lesson practice correction",
+      error_type: "lesson_practice",
+      learning_item_id: learningItemId,
+    }),
+  });
+
+  if (!response.ok) {
+    console.error(
+      "Learning mistake save failed:",
+      response.status,
+      await response.text(),
+    );
+  }
+}
+
 export async function findLearningItemByContent(
   telegramId: string,
   content: string,
