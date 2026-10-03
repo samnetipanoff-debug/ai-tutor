@@ -34,11 +34,11 @@ function engineNotifyEnd() {
  * Получить TTS как Blob (audio/mpeg).
  * Поддерживает оба формата: сырой mp3 и {audio: base64}.
  */
-export async function fetchTts(text) {
+export async function fetchTts(text, language = null) {
   if (!text) return null;
 
   try {
-    const result = await api.tts(text);
+    const result = await api.tts(text, language);
 
     // api.tts возвращает Blob (по нашей текущей реализации)
     if (result instanceof Blob) return result;
