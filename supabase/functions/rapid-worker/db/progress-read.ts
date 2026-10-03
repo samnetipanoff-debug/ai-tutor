@@ -78,6 +78,44 @@ export async function getProgress(
     const mistakes =
       await mistakesResponse.json();
 
+    const skillProgressResponse = await supabaseRequest(
+      `${SUPABASE_URL}/rest/v1/skill_progress?telegram_id=eq.${encodeURIComponent(
+        telegramId,
+      )}&select=*`,
+    );
+
+    if (!skillProgressResponse.ok) {
+      console.error(
+        "Skill progress lookup failed:",
+        skillProgressResponse.status,
+        await skillProgressResponse.text(),
+      );
+
+      return null;
+    }
+
+    const skillProgress =
+      await skillProgressResponse.json();
+
+    const learningItemsResponse = await supabaseRequest(
+      `${SUPABASE_URL}/rest/v1/learning_items?telegram_id=eq.${encodeURIComponent(
+        telegramId,
+      )}&select=*`,
+    );
+
+    if (!learningItemsResponse.ok) {
+      console.error(
+        "Learning items lookup failed:",
+        learningItemsResponse.status,
+        await learningItemsResponse.text(),
+      );
+
+      return null;
+    }
+
+    const learningItems =
+      await learningItemsResponse.json();
+
     return {
       progress: progressRows?.[0] || {
         lessons_completed: 0,
@@ -87,6 +125,8 @@ export async function getProgress(
       },
       vocabulary: vocabulary || [],
       mistakes: mistakes || [],
+      skill_progress: skillProgress || [],
+      learning_items: learningItems || [],
     };
   } catch (error) {
     console.error(
