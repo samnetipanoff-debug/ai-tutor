@@ -120,7 +120,7 @@ function renderLearningItem(lesson, lang) {
         : ""}
 
       ${isRepeat && voiceFeedback
-        ? `<div class="lesson-feedback is-error">${escapeHtml(t("lessons.feedback.incorrect", null, lang))}<br><span class="lesson-feedback-heard">${escapeHtml(voiceFeedback.heard)}</span><br><strong>${escapeHtml(lesson.current_word || "")}</strong></div>`
+        ? `<div class="lesson-feedback is-error">${escapeHtml(t("lessons.feedback.incorrect", null, lang))}<br><span class="lesson-feedback-heard">${escapeHtml(voiceFeedback.heard)}</span>${voiceFeedback.explanation ? `<br><span>${escapeHtml(voiceFeedback.explanation)}</span>` : ""}<br><strong>${escapeHtml(voiceFeedback.correct || lesson.current_word || "")}</strong></div>`
         : ""}
 
       <div class="lesson-actions">
@@ -341,7 +341,11 @@ async function submitLessonVoice(wrapper, blob, mimeType) {
 
     const feedback = result.correct
       ? null
-      : { heard: result.text || "", correct: result.lesson?.current_word || "" };
+      : {
+          heard: result.text || "",
+          correct: result.feedback?.corrected_text || result.lesson?.current_word || "",
+          explanation: result.feedback?.explanation || "",
+        };
 
     setState({
       currentLesson: result.lesson,
