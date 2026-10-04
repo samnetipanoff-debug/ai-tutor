@@ -223,6 +223,8 @@ function bindLessonEvents(wrapper) {
       showLoader();
       const result = await api.startLesson(null, true);
       lessonViewHistory = [];
+      lessonLiveSnapshot = null;
+      lessonViewingHistory = false;
       setState({ currentLesson: result.lesson, lessonVoiceFeedback: null });
       renderLessonsIntoCurrentScreen(wrapper);
     } catch (error) {
@@ -452,6 +454,8 @@ async function startLesson(topic, wrapper) {
     if (!result?.lesson) throw new Error("No lesson returned");
 
     lessonViewHistory = [];
+    lessonLiveSnapshot = null;
+    lessonViewingHistory = false;
     setState({ currentLesson: result.lesson, lessonVoiceFeedback: null });
     telegram.haptic.notification("success");
     hideLoader();
