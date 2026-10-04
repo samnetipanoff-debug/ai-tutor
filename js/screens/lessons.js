@@ -15,6 +15,8 @@ let lessonRecordingTimer = null;
 
 // Visual history for the Lessons tab. It never rewinds saved server progress.
 let lessonViewHistory = [];
+let lessonLiveSnapshot = null;
+let lessonViewingHistory = false;
 
 const TOPICS = [
   { code: "work", emoji: "💼" },
@@ -131,24 +133,29 @@ function renderLearningItem(lesson, lang) {
         : ""}
 
       <div class="lesson-actions">
-        ${lessonViewHistory.length
-          ? `<button class="lesson-action lesson-action-secondary" type="button" data-lesson-back>
-              ${escapeHtml(t("lessons.actions.back", null, lang))}
+        ${lessonViewingHistory
+          ? `<button class="lesson-action lesson-action-primary" type="button" data-lesson-current>
+              ${escapeHtml(t("lessons.actions.current", null, lang))}
             </button>`
-          : ""}
-        <button class="lesson-action lesson-action-secondary" type="button" data-listen>
-          ${escapeHtml(t("lessons.actions.listen", null, lang))}
-        </button>
-        ${step === "example"
-          ? `<button class="lesson-action lesson-action-primary" type="button" data-next>
-              ${escapeHtml(t("lessons.actions.next", null, lang))}
-            </button>`
-          : `<button class="lesson-action lesson-action-primary lesson-voice-answer" type="button" data-lesson-voice>
-              <span class="icon" data-icon="mic"></span>
-              <span data-lesson-voice-label>${escapeHtml(t("chat.record_voice", null, lang))}</span>
-            </button>`}
-      </div>
-    </section>
+          : `
+            ${lessonViewHistory.length
+              ? `<button class="lesson-action lesson-action-secondary" type="button" data-lesson-back>
+                  ${escapeHtml(t("lessons.actions.back", null, lang))}
+                </button>`
+              : ""}
+            <button class="lesson-action lesson-action-secondary" type="button" data-listen>
+              ${escapeHtml(t("lessons.actions.listen", null, lang))}
+            </button>
+            ${step === "example"
+              ? `<button class="lesson-action lesson-action-primary" type="button" data-next>
+                  ${escapeHtml(t("lessons.actions.next", null, lang))}
+                </button>`
+              : `<button class="lesson-action lesson-action-primary lesson-voice-answer" type="button" data-lesson-voice>
+                  <span class="icon" data-icon="mic"></span>
+                  <span data-lesson-voice-label>${escapeHtml(t("chat.record_voice", null, lang))}</span>
+                </button>`}
+          `}
+      </div>   </section>
   `;
 }
 
@@ -203,6 +210,7 @@ function renderCompletedLesson(lesson, lang) {
 
 function bindLessonEvents(wrapper) {
   wrapper.querySelector("[data-lesson-back]")?.addEventListener("click", () => goBackLessonView(wrapper));
+  wrapper.querySelector("[data-lesson-current]")?.addEventListener("click", () => returnToCurrentLessonView(wrapper));
   wrapper.querySelector("[data-listen]")?.addEventListener("click", () => listenCurrentItem(wrapper));
   wrapper.querySelector("[data-next]")?.addEventListener("click", () => nextStep(wrapper));
   wrapper.querySelector("[data-lesson-voice]")?.addEventListener("click", () => toggleLessonRecording(wrapper));
@@ -474,6 +482,46 @@ function goBackLessonView(wrapper) {
   setState({
     currentLesson: previous.lesson,
     lessonVoiceFeedback: previous.lessonVoiceFeedback,
+  });
+
+  renderLessonsIntoCurrentScreen(wrapper);
+}
+
+function goBackLessonView(wrapper) {
+  const current = getState().currentLesson;
+  const previous = lessonViewHistory.pop();
+  if (!previous) return;
+
+  if (!lessonLiveSnapshot && current) {
+    lessonLiveSnapshot = {
+      lesson: JSON.parse(JSON.stringify(current)),
+      lessonVoiceFeedback: getState().lessonVoiceFeedback
+        ? JSON.parse(JSON.stringify(getState().lessonVoiceFeedback))
+        : null,
+    };
+  }
+
+  lessonViewingHistory = true;
+
+  setState({
+    currentLesson: previous.lesson,
+    lessonVoiceFeedback: previous.lessonVoiceFeedback,
+  });
+
+  renderLessonsIntoCurrentScreen(wrapper);
+}
+
+function returnToCurrentLessonView(wrapper) {
+  if (!lessonLiveSnapshot) return;
+
+  const live = lessonLiveSnapshot;
+  lessonLiveSnapshot = null;
+  lessonViewHistory = [];
+  lessonViewingHistory = false;
+
+  setState({
+    currentLesson: live.lesson,
+    lessonVoiceFeedback: live.lessonVoiceFeedback,
   });
 
   renderLessonsIntoCurrentScreen(wrapper);
