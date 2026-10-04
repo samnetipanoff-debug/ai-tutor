@@ -194,9 +194,21 @@ function bindLessonEvents(wrapper) {
   wrapper.querySelector("[data-next]")?.addEventListener("click", () => nextStep(wrapper));
   wrapper.querySelector("[data-lesson-voice]")?.addEventListener("click", () => toggleLessonRecording(wrapper));
   wrapper.querySelector("[data-test-submit]")?.addEventListener("click", () => submitTestAnswer(wrapper));
-  wrapper.querySelector("[data-new-lesson]")?.addEventListener("click", () => {
-    setState({ currentLesson: null, lessonVoiceFeedback: null });
-    renderLessonsIntoCurrentScreen(wrapper);
+  wrapper.querySelector("[data-new-lesson]")?.addEventListener("click", async () => {
+    const lang = getState().profile?.interface_language || "en";
+    setState({ lessonVoiceFeedback: null });
+
+    try {
+      showLoader();
+      const result = await api.startLesson(null, true);
+      setState({ currentLesson: result.lesson, lessonVoiceFeedback: null });
+      renderLessonsIntoCurrentScreen(wrapper);
+    } catch (error) {
+      console.error("new lesson error:", error);
+      showToast(t("errors.network", null, lang), "error");
+    } finally {
+      hideLoader();
+    }
   });
 
   wrapper.querySelector("[data-test-answer]")?.addEventListener("keydown", (event) => {
