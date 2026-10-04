@@ -236,6 +236,7 @@ Deno.serve(async (req) => {
       profile_update,
       lesson,
       topic,
+      force_new,
       answer,
       tts_language,
     } = body;
@@ -301,6 +302,7 @@ Deno.serve(async (req) => {
           String(telegramUser.id),
           profile,
           topic || null,
+          Boolean(force_new),
         );
       } else if (lesson === "current") {
         result = await getCurrentLesson(
