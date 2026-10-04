@@ -13,6 +13,9 @@ let lessonRecordingChunks = [];
 let lessonRecordingStartedAt = 0;
 let lessonRecordingTimer = null;
 
+// Visual history for the Lessons tab. It never rewinds saved server progress.
+let lessonViewHistory = [];
+
 const TOPICS = [
   { code: "work", emoji: "💼" },
   { code: "food", emoji: "🍽" },
@@ -25,6 +28,10 @@ const TOPICS = [
 export function renderLessons() {
   const { profile, currentLesson } = getState();
   const lang = profile?.interface_language || "en";
+
+  if (!currentLesson) {
+    lessonViewHistory = [];
+  }
   const wrapper = document.createElement("div");
   wrapper.className = "lessons";
 
@@ -124,6 +131,11 @@ function renderLearningItem(lesson, lang) {
         : ""}
 
       <div class="lesson-actions">
+        ${lessonViewHistory.length
+          ? `<button class="lesson-action lesson-action-secondary" type="button" data-lesson-back>
+              ${escapeHtml(t("lessons.actions.back", null, lang))}
+            </button>`
+          : ""}
         <button class="lesson-action lesson-action-secondary" type="button" data-listen>
           ${escapeHtml(t("lessons.actions.listen", null, lang))}
         </button>
@@ -190,6 +202,7 @@ function renderCompletedLesson(lesson, lang) {
 }
 
 function bindLessonEvents(wrapper) {
+  wrapper.querySelector("[data-lesson-back]")?.addEventListener("click", () => goBackLessonView(wrapper));
   wrapper.querySelector("[data-listen]")?.addEventListener("click", () => listenCurrentItem(wrapper));
   wrapper.querySelector("[data-next]")?.addEventListener("click", () => nextStep(wrapper));
   wrapper.querySelector("[data-lesson-voice]")?.addEventListener("click", () => toggleLessonRecording(wrapper));
@@ -201,6 +214,7 @@ function bindLessonEvents(wrapper) {
     try {
       showLoader();
       const result = await api.startLesson(null, true);
+      lessonViewHistory = [];
       setState({ currentLesson: result.lesson, lessonVoiceFeedback: null });
       renderLessonsIntoCurrentScreen(wrapper);
     } catch (error) {
@@ -359,6 +373,10 @@ async function submitLessonVoice(wrapper, blob, mimeType) {
           explanation: result.feedback?.explanation || "",
         };
 
+    if (result.correct) {
+      pushLessonViewHistory();
+    }
+
     setState({
       currentLesson: result.lesson,
       lessonVoiceFeedback: feedback,
@@ -402,6 +420,7 @@ async function submitTestAnswer(wrapper) {
 }
 
 async function nextStep(wrapper) {
+  pushLessonViewHistory();
   setLessonBusy(wrapper, true);
   try {
     const result = await api.nextLessonStep();
@@ -424,7 +443,8 @@ async function startLesson(topic, wrapper) {
     const result = await api.startLesson(topic);
     if (!result?.lesson) throw new Error("No lesson returned");
 
-    setState({ currentLesson: result.lesson });
+    lessonViewHistory = [];
+    setState({ currentLesson: result.lesson, lessonVoiceFeedback: null });
     telegram.haptic.notification("success");
     hideLoader();
     renderLessonsIntoCurrentScreen(wrapper);
@@ -433,6 +453,30 @@ async function startLesson(topic, wrapper) {
     hideLoader();
     showToast(t("errors.network", null, lang), "error");
   }
+}
+
+function pushLessonViewHistory() {
+  const lesson = getState().currentLesson;
+  if (!lesson) return;
+
+  lessonViewHistory.push({
+    lesson: JSON.parse(JSON.stringify(lesson)),
+    lessonVoiceFeedback: getState().lessonVoiceFeedback
+      ? JSON.parse(JSON.stringify(getState().lessonVoiceFeedback))
+      : null,
+  });
+}
+
+function goBackLessonView(wrapper) {
+  const previous = lessonViewHistory.pop();
+  if (!previous) return;
+
+  setState({
+    currentLesson: previous.lesson,
+    lessonVoiceFeedback: previous.lessonVoiceFeedback,
+  });
+
+  renderLessonsIntoCurrentScreen(wrapper);
 }
 
 function renderLessonsIntoCurrentScreen(wrapper) {
