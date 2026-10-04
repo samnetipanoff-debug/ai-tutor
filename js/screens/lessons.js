@@ -480,18 +480,6 @@ function pushLessonViewHistory() {
 }
 
 function goBackLessonView(wrapper) {
-  const previous = lessonViewHistory.pop();
-  if (!previous) return;
-
-  setState({
-    currentLesson: previous.lesson,
-    lessonVoiceFeedback: previous.lessonVoiceFeedback,
-  });
-
-  renderLessonsIntoCurrentScreen(wrapper);
-}
-
-function goBackLessonView(wrapper) {
   const current = getState().currentLesson;
   const previous = lessonViewHistory.pop();
   if (!previous) return;
