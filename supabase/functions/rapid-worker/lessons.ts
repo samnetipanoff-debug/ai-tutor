@@ -366,15 +366,33 @@ async function chooseItems(
 function lessonPayload(lesson: Lesson | undefined) {
   if (!lesson) return null;
 
+  const items = (lesson.test_data || []) as any[];
+  const completedItems = Number(lesson.completed_items || 0);
+  const step = lesson.current_step;
+
+  // Recover missing visible item fields from the lesson's own item list.
+  const fallbackIndex =
+    step === "example" ? completedItems - 1 : completedItems;
+  const fallbackItem =
+    fallbackIndex >= 0 && fallbackIndex < items.length
+      ? items[fallbackIndex]
+      : null;
+
+  const currentWord = lesson.current_word || fallbackItem?.content || null;
+  const currentTranslation =
+    lesson.current_translation || fallbackItem?.translation || null;
+  const currentExample =
+    lesson.current_example || fallbackItem?.example || null;
+
   return {
     id: lesson.id,
     lesson_number: lesson.lesson_number,
     topic: lesson.topic,
     status: lesson.status,
     current_step: lesson.current_step,
-    current_word: lesson.current_word,
-    current_translation: lesson.current_translation,
-    current_example: lesson.current_example,
+    current_word: currentWord,
+    current_translation: currentTranslation,
+    current_example: currentExample,
     attempts: lesson.attempts,
     correct_attempts: lesson.correct_attempts,
     wrong_attempts: lesson.wrong_attempts,
