@@ -178,6 +178,11 @@ export const UI = {
       completed: "Завершён",
       in_progress: "В процессе",
       test_result_short: "Результат теста: {score}",
+      test_statistics: "Статистика тестов",
+      tests_completed: "Тестов пройдено",
+      correct_answers: "Правильных ответов",
+      test_accuracy: "Точность тестов",
+      no_test_statistics: "Пока нет данных по тестам."
     },
     profile: {
       title: "Профиль",
@@ -379,6 +384,11 @@ export const UI = {
       completed: "Completed",
       in_progress: "In progress",
       test_result_short: "Test result: {score}",
+      test_statistics: "Test statistics",
+      tests_completed: "Tests completed",
+      correct_answers: "Correct answers",
+      test_accuracy: "Test accuracy",
+      no_test_statistics: "No test data yet."
     },
     profile: {
       title: "Profile",
@@ -580,6 +590,11 @@ export const UI = {
       completed: "Abgeschlossen",
       in_progress: "In Bearbeitung",
       test_result_short: "Testergebnis: {score}",
+      test_statistics: "Teststatistik",
+      tests_completed: "Tests abgeschlossen",
+      correct_answers: "Richtige Antworten",
+      test_accuracy: "Testgenauigkeit",
+      no_test_statistics: "Noch keine Testdaten."
     },
     profile: {
       title: "Profil",
@@ -780,6 +795,11 @@ export const UI = {
       completed: "Završeno",
       in_progress: "U toku",
       test_result_short: "Rezultat testa: {score}",
+      test_statistics: "Statistika testova",
+      tests_completed: "Završeni testovi",
+      correct_answers: "Tačni odgovori",
+      test_accuracy: "Tačnost testova",
+      no_test_statistics: "Još nema podataka o testovima."
     },
     profile: {
       title: "Profil",
@@ -981,6 +1001,11 @@ export const UI = {
       completed: "Completada",
       in_progress: "En curso",
       test_result_short: "Resultado del test: {score}",
+      test_statistics: "Estadísticas de los tests",
+      tests_completed: "Tests completados",
+      correct_answers: "Respuestas correctas",
+      test_accuracy: "Precisión de los tests",
+      no_test_statistics: "Aún no hay datos de tests."
     },
     profile: {
       title: "Perfil",
@@ -1182,6 +1207,11 @@ export const UI = {
       completed: "Terminée",
       in_progress: "En cours",
       test_result_short: "Résultat du test : {score}",
+      test_statistics: "Statistiques des tests",
+      tests_completed: "Tests terminés",
+      correct_answers: "Réponses correctes",
+      test_accuracy: "Précision des tests",
+      no_test_statistics: "Pas encore de données de test."
     },
     profile: {
       title: "Profil",
