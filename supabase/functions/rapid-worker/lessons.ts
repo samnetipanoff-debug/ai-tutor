@@ -476,6 +476,16 @@ export async function startLesson(
       await incrementCompletedLessons(telegramId);
 
       if (!forceNew) return lessonPayload(completed);
+
+      // Старый урок уже завершён — не переводим его обратно в abandoned.
+      // Ниже будет создано новое занятие.
+      const items = await chooseItems(telegramId, profile, topic);
+      if (!items.length) {
+        throw new Error("Could not create learning items");
+      }
+
+      const lesson = await createLesson(telegramId, topic, items);
+      return lessonPayload(lesson);
     }
 
     if (!forceNew) return lessonPayload(active);
