@@ -160,10 +160,11 @@ export const api = {
   /**
    * Начать новый урок.
    */
-  startLesson(topic = null) {
+  startLesson(topic = null, forceNew = false) {
     return postJson({
       lesson: "start",
       topic,
+      force_new: forceNew,
     });
   },
 
