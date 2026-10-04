@@ -103,6 +103,13 @@ function renderContent(progress, vocabulary, mistakes, skillProgress, learningIt
 
     <div class="progress-section">
       <div class="progress-section-title">
+        ${t("progress.test_statistics", null, lang)}
+      </div>
+      ${renderTestStatistics(lessons, lang)}
+    </div>
+
+    <div class="progress-section">
+      <div class="progress-section-title">
         ${t("progress.lesson_history", null, lang)}
       </div>
       ${renderLessonHistory(lessons, lang)}
@@ -147,6 +154,9 @@ function renderLessonHistory(lessons, lang) {
           const score = testTotal > 0
             ? `${testCorrect}/${testTotal}`
             : `${Number(lesson.score || 0)}/${Number(lesson.total_items || 0)}`;
+          const percentage = testTotal > 0
+            ? Math.round((testCorrect / testTotal) * 100)
+            : 0;
 
           return `
             <div class="progress-list-item">
@@ -159,7 +169,7 @@ function renderLessonHistory(lessons, lang) {
                 </div>
               </div>
               <div class="progress-list-item-sub">
-                ${t("progress.test_result_short", { score }, lang)}
+                ${t("progress.test_result_short", { score }, lang)}${testTotal > 0 ? ` · ${percentage}%` : ""}
               </div>
             </div>
           `;
@@ -169,6 +179,36 @@ function renderLessonHistory(lessons, lang) {
   `;
 }
 
+function renderTestStatistics(lessons, lang) {
+  const testedLessons = (lessons || []).filter(
+    (lesson) => Number(lesson.test_items || 0) > 0,
+  );
+
+  const testsCount = testedLessons.length;
+  const correctAnswers = testedLessons.reduce(
+    (sum, lesson) => sum + Number(lesson.test_correct || 0),
+    0,
+  );
+  const totalAnswers = testedLessons.reduce(
+    (sum, lesson) => sum + Number(lesson.test_items || 0),
+    0,
+  );
+  const percentage = totalAnswers > 0
+    ? Math.round((correctAnswers / totalAnswers) * 100)
+    : 0;
+
+  if (testsCount === 0) {
+    return `<div class="progress-empty">${t("progress.no_test_statistics", null, lang)}</div>`;
+  }
+
+  return `
+    <div class="progress-stats progress-test-stats">
+      ${statCard("check", testsCount, t("progress.tests_completed", null, lang))}
+      ${statCard("sparkles", `${correctAnswers}/${totalAnswers}`, t("progress.correct_answers", null, lang))}
+      ${statCard("chart", `${percentage}%`, t("progress.test_accuracy", null, lang))}
+    </div>
+  `;
+}
 function renderLearningProgress(skillProgress, learningItems, lang) {
   if (!skillProgress || skillProgress.length === 0) {
     return `<div class="progress-empty">${t("progress.no_learning_progress", null, lang)}</div>`;
