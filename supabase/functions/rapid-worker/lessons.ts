@@ -453,9 +453,38 @@ export async function startLesson(
   telegramId: string,
   profile: any,
   topic: string | null,
+  forceNew = false,
 ) {
   const active = await getActiveLesson(telegramId);
-  if (active) return lessonPayload(active);
+
+  if (active) {
+    const testData = (active.test_data || []) as any[];
+    const testTotal = Math.min(3, testData.length);
+    const testIndex = Number(active.test_index || 0);
+
+    if (
+      active.current_step === "test" &&
+      testTotal > 0 &&
+      testIndex >= testTotal
+    ) {
+      const completed = await updateLesson(active.id, {
+        status: "completed",
+        current_step: "done",
+        test_items: testTotal,
+        completed_at: active.completed_at || new Date().toISOString(),
+      });
+      await incrementCompletedLessons(telegramId);
+
+      if (!forceNew) return lessonPayload(completed);
+    }
+
+    if (!forceNew) return lessonPayload(active);
+
+    await updateLesson(active.id, {
+      status: "abandoned",
+      completed_at: new Date().toISOString(),
+    });
+  }
 
   const items = await chooseItems(telegramId, profile, topic);
   if (!items.length) {
